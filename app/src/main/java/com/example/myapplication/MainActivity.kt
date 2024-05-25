@@ -14,9 +14,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Button
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,7 +22,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
-
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import com.google.zxing.integration.android.IntentIntegrator
 import okhttp3.*
@@ -72,7 +69,8 @@ fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
             Log.d("MainContent", "Scanned result: $resultString")
             if (resultString != null) {
                 viewModel.scanResult.value = resultString
-                openBox(resultString, viewModel, context)
+                val stringArray: List<String> = resultString.split("/")
+                openBox(stringArray, viewModel, context)
             } else {
                 viewModel.scanResult.value = "No result"
                 Log.d("MainContent", "No result from scan")
@@ -100,20 +98,25 @@ fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
         }) {
             Text(text = "Scan QR Code")
         }
+        Button(onClick = {
+            val intent = Intent(context, HistoryActivity::class.java)
+            context.startActivity(intent)
+        }) {
+            Text(text = "View History")
+        }
         if (viewModel.scanResult.value.isNotEmpty()) {
             Text(text = "Scan result: ${viewModel.scanResult.value}")
         }
     }
 }
 
-fun openBox(qrCodeInfo: String, viewModel: MainViewModel, context: Context) {
+fun openBox(qrCodeInfo: List<String>, viewModel: MainViewModel, context: Context) {
     val client = OkHttpClient()
     val url = "https://api-d4me-stage.direct4.me/sandbox/v1/Access/openbox"
     val json = """
         {
-            "boxId": 1947,
+            "boxId": ${qrCodeInfo[4].toInt()},
             "tokenFormat": 2
-           
         }
     """
     Log.d("openBox", "Request payload: $json")
@@ -146,7 +149,9 @@ fun openBox(qrCodeInfo: String, viewModel: MainViewModel, context: Context) {
                         }
                         val tokenFile = unzipToken(zipFile, context)
                         if (tokenFile != null) {
-                            playToken(tokenFile, context)
+                            playToken(tokenFile, context) {
+                                showSuccessDialog(context, viewModel)
+                            }
                         } else {
                             Log.e("openBox", "Failed to extract token.wav from the zip file")
                         }
@@ -186,7 +191,7 @@ fun unzipToken(zipFile: File, context: Context): File? {
     return null
 }
 
-fun playToken(tokenFile: File, context: Context) {
+fun playToken(tokenFile: File, context: Context, onCompletion: () -> Unit) {
     val mediaPlayer = MediaPlayer().apply {
         setDataSource(context, Uri.fromFile(tokenFile))
         setOnPreparedListener {
@@ -196,6 +201,7 @@ fun playToken(tokenFile: File, context: Context) {
         setOnCompletionListener {
             Log.d("playToken", "Playback completed, releasing MediaPlayer")
             release()
+            onCompletion()
         }
         setOnErrorListener { mp, what, extra ->
             Log.e("playToken", "Error occurred: what=$what, extra=$extra")
@@ -203,6 +209,67 @@ fun playToken(tokenFile: File, context: Context) {
         }
         prepareAsync()
     }
+}
+
+fun showSuccessDialog(context: Context, viewModel: MainViewModel) {
+    (context as? ComponentActivity)?.let { activity ->
+        activity.setContent {
+            var showDialog by remember { mutableStateOf(true) }
+            if (showDialog) {
+                AlertDialog(
+                    onDismissRequest = {},
+                    title = { Text("Operation Success") },
+                    text = { Text("Did the attempt succeed?") },
+                    confirmButton = {
+                        Button(onClick = {
+                            showDialog = false
+                            sendToDatabase(true, viewModel.scanResult.value)
+                        }) {
+                            Text("Yes")
+                        }
+                    },
+                    dismissButton = {
+                        Button(onClick = {
+                            showDialog = false
+                            sendToDatabase(false, viewModel.scanResult.value)
+                        }) {
+                            Text("No")
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+fun sendToDatabase(success: Boolean, scanResult: String) {
+    val client = OkHttpClient()
+    val url = "https://your-backend-url.com/api/usageHistory"
+    val json = JSONObject().apply {
+        put("user", "currentUserId") // Replace with actual user ID
+        put("timestamp", System.currentTimeMillis())
+        put("success", success)
+        put("scanResult", scanResult)
+    }.toString()
+    val body = RequestBody.create("application/json; charset=utf-8".toMediaType(), json)
+    val request = Request.Builder()
+        .url(url)
+        .post(body)
+        .build()
+
+    client.newCall(request).enqueue(object : Callback {
+        override fun onFailure(call: Call, e: IOException) {
+            Log.e("sendToDatabase", "Failed to send data", e)
+        }
+
+        override fun onResponse(call: Call, response: Response) {
+            if (!response.isSuccessful) {
+                Log.e("sendToDatabase", "Unexpected response: ${response.body?.string()}")
+            } else {
+                Log.d("sendToDatabase", "Data sent successfully")
+            }
+        }
+    })
 }
 
 @Composable
