@@ -65,7 +65,7 @@ fun HistoryItemView(item: HistoryItem) {
 data class HistoryItem(val user: String, val timestamp: Long, val success: Boolean)
 
 private fun fetchHistory(onResult: (List<HistoryItem>) -> Unit) {
-    val url = "https://your-backend-url.com/api/usageHistory"
+    val url = "http://185.85.148.40:8080/api/usageHistory"
 
     val client = OkHttpClient()
     val request = Request.Builder()

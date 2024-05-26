@@ -244,12 +244,12 @@ fun showSuccessDialog(context: Context, viewModel: MainViewModel) {
 
 fun sendToDatabase(success: Boolean, scanResult: String) {
     val client = OkHttpClient()
-    val url = "https://your-backend-url.com/api/usageHistory"
+    val url = "http://185.85.148.40:8080/api/usageHistory"
     val json = JSONObject().apply {
-        put("user", "currentUserId") // Replace with actual user ID
-        put("timestamp", System.currentTimeMillis())
+        put("id_pk","1947")
+        put("userId", "123") // Replace with actual user ID
         put("success", success)
-        put("scanResult", scanResult)
+
     }.toString()
     val body = RequestBody.create("application/json; charset=utf-8".toMediaType(), json)
     val request = Request.Builder()
