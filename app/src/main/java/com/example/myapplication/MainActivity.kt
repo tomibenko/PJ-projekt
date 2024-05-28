@@ -246,10 +246,9 @@ fun sendToDatabase(success: Boolean, scanResult: String) {
     val client = OkHttpClient()
     val url = "http://185.85.148.40:8080/api/usageHistory"
     val json = JSONObject().apply {
-        put("id_pk","1947")
-        put("userId", "123") // Replace with actual user ID
+        put("id_pk", "1947") // Replace with actual id_pk
+        put("userId", "664901c53e8dd8406a575db3") // Replace with actual user ID
         put("success", success)
-
     }.toString()
     val body = RequestBody.create("application/json; charset=utf-8".toMediaType(), json)
     val request = Request.Builder()
@@ -271,6 +270,7 @@ fun sendToDatabase(success: Boolean, scanResult: String) {
         }
     })
 }
+
 
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
