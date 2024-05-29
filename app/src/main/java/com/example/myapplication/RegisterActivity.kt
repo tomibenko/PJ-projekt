@@ -19,6 +19,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
+import org.json.JSONObject
+import java.io.IOException
 
 class RegisterActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,9 +37,50 @@ class RegisterActivity : ComponentActivity() {
 
 @Composable
 fun RegisterScreen() {
+    val context = LocalContext.current
     var email by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf("") }
+    var successMessage by remember { mutableStateOf("") }
+
+    fun registerUser(email: String, username: String, password: String){
+        val client = OkHttpClient()
+        val url = "http://185.85.148.40:8080/users"
+
+        val json = JSONObject().apply {
+            put("email", email)
+            put("username", username)
+            put("password", password)
+        }.toString()
+
+        val body = RequestBody.create("application/json; charset=utf-8".toMediaType(), json)
+        val request = Request.Builder()
+            .url(url)
+            .post(body)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback{
+            override fun onFailure(call: Call, e: IOException) {
+                e.printStackTrace()
+                errorMessage = "Registration failed: ${e.message}"
+                successMessage = ""
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if(response.isSuccessful){
+                    successMessage = "Registration successful"
+                    errorMessage = ""
+
+                    context.startActivity(Intent(context, LoginActivity::class.java))
+                }
+                else{
+                    errorMessage = "Registration failed: ${response.message}"
+                    successMessage = ""
+                }
+            }
+        })
+    }
 
     Column (
         modifier = Modifier
@@ -79,7 +124,7 @@ fun RegisterScreen() {
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
-                    onClick = { /*TODO implement logic for registering*/ },
+                    onClick = { registerUser(email, username, password) },
                     modifier = Modifier.fillMaxWidth()
                 ){
                     Text("Register")
