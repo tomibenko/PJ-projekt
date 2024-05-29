@@ -13,6 +13,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -81,6 +82,68 @@ fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Card(
+            modifier = Modifier.padding(16.dp),
+            shape = MaterialTheme.shapes.medium,
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column (modifier = Modifier.padding(16.dp)) {
+                Greeting(
+                    name = "Android",
+                    modifier = Modifier
+                        .padding(bottom = 16.dp)
+                        .align(Alignment.CenterHorizontally)
+                )
+                Button(
+                    onClick = {
+                        val integrator = IntentIntegrator(context as Activity)
+                        integrator.setOrientationLocked(false)
+                        integrator.setPrompt("Scan a QR code")
+                        integrator.setBeepEnabled(true)
+                        launcher.launch(integrator.createScanIntent())
+                    },
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = "Scan QR Code")
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        val intent = Intent(context, HistoryActivity::class.java)
+                        context.startActivity(intent)
+                    },
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                ){
+                    Text(text = "View History")
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        val intent = Intent(context, LoginActivity::class.java)
+                        context.startActivity(intent)
+                    },
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = modifier.fillMaxWidth()
+                ){
+                    Text(text = "Login")
+                }
+                if (viewModel.scanResult.value.isNotEmpty()) {
+                    Text(text = "Scan result: ${viewModel.scanResult.value}")
+                }
+            }
+        }
+    }
+    /*
+    Column(
+        modifier = modifier
+            .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
@@ -122,7 +185,9 @@ fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
         if (viewModel.scanResult.value.isNotEmpty()) {
             Text(text = "Scan result: ${viewModel.scanResult.value}")
         }
+
     }
+         */
 }
 
 fun openBox(qrCodeInfo: List<String>, viewModel: MainViewModel, context: Context) {
