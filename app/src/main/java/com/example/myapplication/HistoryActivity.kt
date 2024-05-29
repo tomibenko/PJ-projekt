@@ -1,5 +1,6 @@
 package com.example.myapplication
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -11,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.ui.theme.MyApplicationTheme
@@ -34,10 +36,11 @@ class HistoryActivity : ComponentActivity() {
 
 @Composable
 fun HistoryScreen() {
+    val context = LocalContext.current
     var historyItems by remember { mutableStateOf(emptyList<HistoryItem>()) }
 
     LaunchedEffect(Unit) {
-        fetchHistory { items ->
+        fetchHistory(context) { items ->
             historyItems = items
         }
     }
@@ -66,12 +69,21 @@ fun HistoryItemView(item: HistoryItem) {
 
 data class HistoryItem(val user: String, val timestamp: String, val success: Boolean)
 
-private fun fetchHistory(onResult: (List<HistoryItem>) -> Unit) {
+private fun fetchHistory(context: Context, onResult: (List<HistoryItem>) -> Unit) {
+    val sharedPreferences = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
+    val userId = sharedPreferences.getString("userId", null)
+
+    if(userId == null){
+        onResult(emptyList())
+        return
+    }
+
     val client = OkHttpClient()
     val url = "http://185.85.148.40:8080/api/usageHistory"
     val json = JSONObject().apply {
-        put("userId", "664c3976393467d8beca0a32") // Replace with actual user ID
+        put("userId", userId) // Replace with actual user ID
     }.toString()
+
     val body = RequestBody.create("application/json; charset=utf-8".toMediaType(), json)
     val request = Request.Builder()
         .url(url)
