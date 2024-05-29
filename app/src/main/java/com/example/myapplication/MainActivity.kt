@@ -95,14 +95,29 @@ fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
             integrator.setPrompt("Scan a QR code")
             integrator.setBeepEnabled(true)
             launcher.launch(integrator.createScanIntent())
-        }) {
+        },
+            shape = MaterialTheme.shapes.medium
+        ) {
             Text(text = "Scan QR Code")
         }
+        Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = {
             val intent = Intent(context, HistoryActivity::class.java)
             context.startActivity(intent)
-        }) {
+        },
+            shape = MaterialTheme.shapes.medium
+        ) {
             Text(text = "View History")
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = {
+                val intent = Intent(context, LoginActivity::class.java)
+                context.startActivity(intent)
+            },
+            shape = MaterialTheme.shapes.medium
+        ){
+            Text(text = "Login")
         }
         if (viewModel.scanResult.value.isNotEmpty()) {
             Text(text = "Scan result: ${viewModel.scanResult.value}")
