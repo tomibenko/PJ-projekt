@@ -15,7 +15,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
 import org.json.JSONArray
+import org.json.JSONObject
 import java.io.IOException
 
 class HistoryActivity : ComponentActivity() {
@@ -62,14 +64,18 @@ fun HistoryItemView(item: HistoryItem) {
     }
 }
 
-data class HistoryItem(val user: String, val timestamp: Long, val success: Boolean)
+data class HistoryItem(val user: String, val timestamp: String, val success: Boolean)
 
 private fun fetchHistory(onResult: (List<HistoryItem>) -> Unit) {
-    val url = "http://185.85.148.40:8080/api/usageHistory"
-
     val client = OkHttpClient()
+    val url = "http://185.85.148.40:8080/api/usageHistory"
+    val json = JSONObject().apply {
+        put("userId", "664c3976393467d8beca0a32") // Replace with actual user ID
+    }.toString()
+    val body = RequestBody.create("application/json; charset=utf-8".toMediaType(), json)
     val request = Request.Builder()
         .url(url)
+        .post(body)
         .build()
 
     client.newCall(request).enqueue(object : Callback {
@@ -89,7 +95,7 @@ private fun fetchHistory(onResult: (List<HistoryItem>) -> Unit) {
                 historyList.add(
                     HistoryItem(
                         item.getString("user"),
-                        item.getLong("timestamp"),
+                        item.getString("timestamp"),
                         item.getBoolean("success")
                     )
                 )
@@ -99,6 +105,7 @@ private fun fetchHistory(onResult: (List<HistoryItem>) -> Unit) {
         }
     })
 }
+
 
 @Preview(showBackground = true)
 @Composable

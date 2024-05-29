@@ -212,6 +212,7 @@ fun playToken(tokenFile: File, context: Context, onCompletion: () -> Unit) {
 }
 
 fun showSuccessDialog(context: Context, viewModel: MainViewModel) {
+    val stringArray: List<String> = viewModel.scanResult.value.split("/")
     (context as? ComponentActivity)?.let { activity ->
         activity.setContent {
             var showDialog by remember { mutableStateOf(true) }
@@ -223,7 +224,7 @@ fun showSuccessDialog(context: Context, viewModel: MainViewModel) {
                     confirmButton = {
                         Button(onClick = {
                             showDialog = false
-                            sendToDatabase(true, viewModel.scanResult.value)
+                            sendToDatabase(true, stringArray[4].toInt().toString())
                         }) {
                             Text("Yes")
                         }
@@ -231,7 +232,7 @@ fun showSuccessDialog(context: Context, viewModel: MainViewModel) {
                     dismissButton = {
                         Button(onClick = {
                             showDialog = false
-                            sendToDatabase(false, viewModel.scanResult.value)
+                            sendToDatabase(false, stringArray[4].toInt().toString())
                         }) {
                             Text("No")
                         }
@@ -243,11 +244,12 @@ fun showSuccessDialog(context: Context, viewModel: MainViewModel) {
 }
 
 fun sendToDatabase(success: Boolean, scanResult: String) {
+
     val client = OkHttpClient()
-    val url = "http://185.85.148.40:8080/api/usageHistory"
+    val url = "http://185.85.148.40:8080/api/addUsageHistory"
     val json = JSONObject().apply {
-        put("id_pk", "1947") // Replace with actual id_pk
-        put("userId", "664901c53e8dd8406a575db3") // Replace with actual user ID
+        put("id_pk", scanResult) // Replace with actual id_pk
+        put("userId", "664c3976393467d8beca0a32") // Replace with actual user ID
         put("success", success)
     }.toString()
     val body = RequestBody.create("application/json; charset=utf-8".toMediaType(), json)
