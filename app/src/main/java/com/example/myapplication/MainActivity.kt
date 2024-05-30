@@ -35,9 +35,13 @@ import java.io.IOException
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
+class MainViewModel : ViewModel() {
+    val scanResult: MutableState<String> = mutableStateOf("")
+    val tokenResult: MutableState<String> = mutableStateOf("")
+}
+
 class MainActivity : ComponentActivity() {
     private val mainViewModel: MainViewModel by viewModels()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -51,11 +55,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-}
-
-class MainViewModel : ViewModel() {
-    val scanResult: MutableState<String> = mutableStateOf("")
-    val tokenResult: MutableState<String> = mutableStateOf("")
 }
 
 @Composable
@@ -170,6 +169,7 @@ fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
         }
     }
 }
+
 fun logout(context: Context){
     val sharedPreferences = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
     with (sharedPreferences.edit()){
@@ -203,7 +203,6 @@ fun logout(context: Context){
     context.startActivity(intent)
     (context as Activity).finish()
 }
-
 
 fun openBox(qrCodeInfo: List<String>, viewModel: MainViewModel, context: Context, onCompletion: () -> Unit) {
     val client = OkHttpClient()
@@ -306,35 +305,6 @@ fun playToken(tokenFile: File, context: Context, onCompletion: () -> Unit) {
     }
 }
 
-@Composable
-fun ShowSuccessDialog(scanResult: String, onDismiss: (Boolean) -> Unit) {
-    val stringArray: List<String> = scanResult.split("/")
-    var showDialog by remember { mutableStateOf(true) }
-    if (showDialog) {
-        AlertDialog(
-            onDismissRequest = { onDismiss(false) },
-            title = { Text("Operation Success") },
-            text = { Text("Did the attempt succeed?") },
-            confirmButton = {
-                Button(onClick = {
-                    showDialog = false
-                    onDismiss(true)
-                }) {
-                    Text("Yes")
-                }
-            },
-            dismissButton = {
-                Button(onClick = {
-                    showDialog = false
-                    onDismiss(false)
-                }) {
-                    Text("No")
-                }
-            }
-        )
-    }
-}
-
 fun sendToDatabase(success: Boolean, scanResult: String?, userId: String?) {
     scanResult?.let {
         val client = OkHttpClient()
@@ -363,6 +333,36 @@ fun sendToDatabase(success: Boolean, scanResult: String?, userId: String?) {
                 }
             }
         })
+    }
+}
+
+@Composable
+fun ShowSuccessDialog(scanResult: String, onDismiss: (Boolean) -> Unit) {
+    val stringArray: List<String> = scanResult.split("/")
+    var showDialog by remember { mutableStateOf(true) }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { onDismiss(false) },
+            title = { Text("Operation Success") },
+            text = { Text("Did the attempt succeed?") },
+            confirmButton = {
+                Button(onClick = {
+                    showDialog = false
+                    onDismiss(true)
+                }) {
+                    Text("Yes")
+                }
+            },
+            dismissButton = {
+                Button(onClick = {
+                    showDialog = false
+                    onDismiss(false)
+                }) {
+                    Text("No")
+                }
+            }
+        )
     }
 }
 

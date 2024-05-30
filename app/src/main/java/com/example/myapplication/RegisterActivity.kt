@@ -47,7 +47,7 @@ fun RegisterScreen() {
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
     var successMessage by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
+    val passwordVisible by remember { mutableStateOf(false) }
 
     fun registerUser(email: String, username: String, password: String){
         val client = OkHttpClient()

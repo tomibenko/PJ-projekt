@@ -164,7 +164,7 @@ fun LoginScreen(){
                 }
                 if(successMessage.isNotEmpty()){
                     Text(
-                        text = errorMessage,
+                        text = successMessage,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(top = 16.dp)
                     )
