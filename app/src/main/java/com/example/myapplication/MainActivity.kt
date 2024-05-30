@@ -60,21 +60,22 @@ class MainViewModel : ViewModel() {
 @Composable
 fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val sharedPreferences = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
-    val userId = sharedPreferences.getString("userId", null)
+    var showDialog by remember { mutableStateOf(false) }
+    val scanResult = viewModel.scanResult.value
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val intent = result.data
-            val resultString =
-                IntentIntegrator.parseActivityResult(result.resultCode, intent)?.contents
+            val resultString = IntentIntegrator.parseActivityResult(result.resultCode, intent)?.contents
             Log.d("MainContent", "Scanned result: $resultString")
             if (resultString != null) {
                 viewModel.scanResult.value = resultString
                 val stringArray: List<String> = resultString.split("/")
-                openBox(stringArray, viewModel, context)
+                openBox(stringArray, viewModel, context) {
+                    showDialog = true
+                }
             } else {
                 viewModel.scanResult.value = "No result"
                 Log.d("MainContent", "No result from scan")
@@ -102,34 +103,31 @@ fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                         .padding(bottom = 16.dp)
                         .align(Alignment.CenterHorizontally)
                 )
-                if (userId != null) {
-                    Button(
-                        onClick = {
-                            val integrator = IntentIntegrator(context as Activity)
-                            integrator.setOrientationLocked(false)
-                            integrator.setPrompt("Scan a QR code")
-                            integrator.setBeepEnabled(true)
-                            launcher.launch(integrator.createScanIntent())
-                        },
-                        shape = MaterialTheme.shapes.medium,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(text = "Scan QR Code")
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = {
-                            val intent = Intent(context, HistoryActivity::class.java)
-                            context.startActivity(intent)
-                        },
-                        shape = MaterialTheme.shapes.medium,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(text = "View History")
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        val integrator = IntentIntegrator(context as Activity)
+                        integrator.setOrientationLocked(false)
+                        integrator.setPrompt("Scan a QR code")
+                        integrator.setBeepEnabled(true)
+                        launcher.launch(integrator.createScanIntent())
+                    },
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = "Scan QR Code")
                 }
-
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        val intent = Intent(context, HistoryActivity::class.java)
+                        context.startActivity(intent)
+                    },
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = "View History")
+                }
+                Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = {
                         val intent = Intent(context, LoginActivity::class.java)
@@ -140,15 +138,23 @@ fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                 ) {
                     Text(text = "Login")
                 }
-                if (viewModel.scanResult.value.isNotEmpty()) {
-                    Text(text = "Scan result: ${viewModel.scanResult.value}")
+                if (scanResult.isNotEmpty()) {
+                    Text(text = "Scan result: $scanResult")
                 }
             }
         }
     }
+
+    if (showDialog) {
+        ShowSuccessDialog(viewModel.scanResult.value) {
+            val stringArray: List<String> = scanResult.split("/")
+            showDialog = false
+            sendToDatabase(it, stringArray[4])
+        }
+    }
 }
 
-fun openBox(qrCodeInfo: List<String>, viewModel: MainViewModel, context: Context) {
+fun openBox(qrCodeInfo: List<String>, viewModel: MainViewModel, context: Context, onCompletion: () -> Unit) {
     val client = OkHttpClient()
     val url = "https://api-d4me-stage.direct4.me/sandbox/v1/Access/openbox"
     val json = """
@@ -188,7 +194,7 @@ fun openBox(qrCodeInfo: List<String>, viewModel: MainViewModel, context: Context
                         val tokenFile = unzipToken(zipFile, context)
                         if (tokenFile != null) {
                             playToken(tokenFile, context) {
-                                showSuccessDialog(context, viewModel)
+                                onCompletion()
                             }
                         } else {
                             Log.e("openBox", "Failed to extract token.wav from the zip file")
@@ -201,10 +207,7 @@ fun openBox(qrCodeInfo: List<String>, viewModel: MainViewModel, context: Context
                     if (jsonResponse.has("validationErrors")) {
                         val validationErrors = jsonResponse.getJSONObject("validationErrors")
                         validationErrors.keys().forEach {
-                            Log.e(
-                                "openBox",
-                                "Validation error on $it: ${validationErrors.getString(it)}"
-                            )
+                            Log.e("openBox", "Validation error on $it: ${validationErrors.getString(it)}")
                         }
                     }
                 }
@@ -252,68 +255,65 @@ fun playToken(tokenFile: File, context: Context, onCompletion: () -> Unit) {
     }
 }
 
-fun showSuccessDialog(context: Context, viewModel: MainViewModel) {
-    val stringArray: List<String> = viewModel.scanResult.value.split("/")
-    (context as? ComponentActivity)?.let { activity ->
-        activity.setContent {
-            var showDialog by remember { mutableStateOf(true) }
-            if (showDialog) {
-                AlertDialog(
-                    onDismissRequest = {},
-                    title = { Text("Operation Success") },
-                    text = { Text("Did the attempt succeed?") },
-                    confirmButton = {
-                        Button(onClick = {
-                            showDialog = false
-                            sendToDatabase(true, stringArray[4].toInt().toString())
-                        }) {
-                            Text("Yes")
-                        }
-                    },
-                    dismissButton = {
-                        Button(onClick = {
-                            showDialog = false
-                            sendToDatabase(false, stringArray[4].toInt().toString())
-                        }) {
-                            Text("No")
-                        }
-                    }
-                )
+@Composable
+fun ShowSuccessDialog(scanResult: String, onDismiss: (Boolean) -> Unit) {
+    val stringArray: List<String> = scanResult.split("/")
+    var showDialog by remember { mutableStateOf(true) }
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { onDismiss(false) },
+            title = { Text("Operation Success") },
+            text = { Text("Did the attempt succeed?") },
+            confirmButton = {
+                Button(onClick = {
+                    showDialog = false
+                    onDismiss(true)
+                }) {
+                    Text("Yes")
+                }
+            },
+            dismissButton = {
+                Button(onClick = {
+                    showDialog = false
+                    onDismiss(false)
+                }) {
+                    Text("No")
+                }
             }
-        }
+        )
     }
 }
 
-fun sendToDatabase(success: Boolean, scanResult: String) {
+fun sendToDatabase(success: Boolean, scanResult: String?) {
+    scanResult?.let {
+        val client = OkHttpClient()
+        val url = "http://185.85.148.40:8080/api/addUsageHistory"
+        val json = JSONObject().apply {
+            put("id_pk", it) // Replace with actual id_pk
+            put("userId", "664c3976393467d8beca0a32") // Replace with actual user ID
+            put("success", success)
+        }.toString()
+        val body = RequestBody.create("application/json; charset=utf-8".toMediaType(), json)
+        val request = Request.Builder()
+            .url(url)
+            .post(body)
+            .build()
 
-    val client = OkHttpClient()
-    val url = "http://185.85.148.40:8080/api/addUsageHistory"
-    val json = JSONObject().apply {
-        put("id_pk", scanResult) // Replace with actual id_pk
-        put("userId", "664c3976393467d8beca0a32") // Replace with actual user ID
-        put("success", success)
-    }.toString()
-    val body = RequestBody.create("application/json; charset=utf-8".toMediaType(), json)
-    val request = Request.Builder()
-        .url(url)
-        .post(body)
-        .build()
-
-    client.newCall(request).enqueue(object : Callback {
-        override fun onFailure(call: Call, e: IOException) {
-            Log.e("sendToDatabase", "Failed to send data", e)
-        }
-
-        override fun onResponse(call: Call, response: Response) {
-            if (!response.isSuccessful) {
-                Log.e("sendToDatabase", "Unexpected response: ${response.body?.string()}")
-            } else {
-                Log.d("sendToDatabase", "Data sent successfully")
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e("sendToDatabase", "Failed to send data", e)
             }
-        }
-    })
-}
 
+            override fun onResponse(call: Call, response: Response) {
+                if (!response.isSuccessful) {
+                    Log.e("sendToDatabase", "Unexpected response: ${response.body?.string()}")
+                } else {
+                    Log.d("sendToDatabase", "Data sent successfully")
+                }
+            }
+        })
+    }
+}
 
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
