@@ -3,6 +3,7 @@ package com.example.myapplication
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Bundle
@@ -63,6 +64,9 @@ fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
     var showDialog by remember { mutableStateOf(false) }
     val scanResult = viewModel.scanResult.value
 
+    val sharedPreferences = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
+    val userId = sharedPreferences.getString("userId", null)
+
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -103,40 +107,53 @@ fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                         .padding(bottom = 16.dp)
                         .align(Alignment.CenterHorizontally)
                 )
-                Button(
-                    onClick = {
-                        val integrator = IntentIntegrator(context as Activity)
-                        integrator.setOrientationLocked(false)
-                        integrator.setPrompt("Scan a QR code")
-                        integrator.setBeepEnabled(true)
-                        launcher.launch(integrator.createScanIntent())
-                    },
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(text = "Scan QR Code")
+                if (userId != null) {
+                    Button(
+                        onClick = {
+                            val integrator = IntentIntegrator(context as Activity)
+                            integrator.setOrientationLocked(false)
+                            integrator.setPrompt("Scan a QR code")
+                            integrator.setBeepEnabled(true)
+                            launcher.launch(integrator.createScanIntent())
+                        },
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(text = "Scan QR Code")
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = {
+                            val intent = Intent(context, HistoryActivity::class.java)
+                            context.startActivity(intent)
+                        },
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(text = "View History")
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = {
+                            logout(context)
+                        },
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.fillMaxWidth()
+                    ){
+                        Text(text = "Logout")
+                    }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        val intent = Intent(context, HistoryActivity::class.java)
-                        context.startActivity(intent)
-                    },
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(text = "View History")
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        val intent = Intent(context, LoginActivity::class.java)
-                        context.startActivity(intent)
-                    },
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = modifier.fillMaxWidth()
-                ) {
-                    Text(text = "Login")
+                else{
+                    Button(
+                        onClick = {
+                            val intent = Intent(context, LoginActivity::class.java)
+                            context.startActivity(intent)
+                        },
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = modifier.fillMaxWidth()
+                    ) {
+                        Text(text = "Login")
+                    }
                 }
                 if (scanResult.isNotEmpty()) {
                     Text(text = "Scan result: $scanResult")
@@ -149,10 +166,44 @@ fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
         ShowSuccessDialog(viewModel.scanResult.value) {
             val stringArray: List<String> = scanResult.split("/")
             showDialog = false
-            sendToDatabase(it, stringArray[4])
+            sendToDatabase(it, stringArray[4], userId)
         }
     }
 }
+fun logout(context: Context){
+    val sharedPreferences = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
+    with (sharedPreferences.edit()){
+        remove("userId")
+        apply()
+    }
+
+    val client = OkHttpClient()
+    val url = "http://185.85.148.40:8080/users/logout"
+    val request = Request.Builder()
+        .url(url)
+        .get()
+        .build()
+
+    client.newCall(request).enqueue(object: Callback{
+        override fun onFailure(call: Call, e: IOException) {
+            Log.e("Logout", "Failed to call logout API", e)
+        }
+
+        override fun onResponse(call: Call, response: Response) {
+            if(response.isSuccessful){
+                Log.d("Logout", "Logout successful")
+            }
+            else{
+                Log.e("Logout", "Logout failed: ${response.message}")
+            }
+        }
+    })
+
+    val intent = Intent(context, LoginActivity::class.java)
+    context.startActivity(intent)
+    (context as Activity).finish()
+}
+
 
 fun openBox(qrCodeInfo: List<String>, viewModel: MainViewModel, context: Context, onCompletion: () -> Unit) {
     val client = OkHttpClient()
@@ -284,13 +335,13 @@ fun ShowSuccessDialog(scanResult: String, onDismiss: (Boolean) -> Unit) {
     }
 }
 
-fun sendToDatabase(success: Boolean, scanResult: String?) {
+fun sendToDatabase(success: Boolean, scanResult: String?, userId: String?) {
     scanResult?.let {
         val client = OkHttpClient()
         val url = "http://185.85.148.40:8080/api/addUsageHistory"
         val json = JSONObject().apply {
             put("id_pk", it) // Replace with actual id_pk
-            put("userId", "664c3976393467d8beca0a32") // Replace with actual user ID
+            put("userId", userId) // Replace with actual user ID
             put("success", success)
         }.toString()
         val body = RequestBody.create("application/json; charset=utf-8".toMediaType(), json)

@@ -4,17 +4,22 @@ import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
@@ -45,9 +50,29 @@ fun HistoryScreen() {
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Usage history",
+            style = MaterialTheme.typography.titleLarge.copy(
+                color = MaterialTheme.colorScheme.onBackground,
+                fontSize = 24.sp,
+                textAlign = TextAlign.Center
+            ),
+            modifier = Modifier
+                .padding(bottom = 16.dp)
+                .fillMaxWidth()
+        )
         if (historyItems.isEmpty()) {
-            Text(text = "Loading...", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = "Loading...",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(historyItems) { item ->
@@ -60,11 +85,20 @@ fun HistoryScreen() {
 
 @Composable
 fun HistoryItemView(item: HistoryItem) {
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text(text = "User: ${item.user}", style = MaterialTheme.typography.bodyLarge)
-        Text(text = "Timestamp: ${item.timestamp}", style = MaterialTheme.typography.bodyMedium)
-        Text(text = if (item.success) "Success" else "Failure", style = MaterialTheme.typography.bodyMedium)
+    Card(
+        modifier = Modifier
+            .padding(vertical = 8.dp)
+            .fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ){
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = "User: ${item.user}", style = MaterialTheme.typography.bodyLarge)
+            Text(text = "Timestamp: ${item.timestamp}", style = MaterialTheme.typography.bodyMedium)
+            Text(text = if (item.success) "Success" else "Failure", style = MaterialTheme.typography.bodyMedium)
+        }
     }
+
 }
 
 data class HistoryItem(val user: String, val timestamp: String, val success: Boolean)

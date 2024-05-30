@@ -12,11 +12,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import okhttp3.*
@@ -43,6 +47,7 @@ fun RegisterScreen() {
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
     var successMessage by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
 
     fun registerUser(email: String, username: String, password: String){
         val client = OkHttpClient()
@@ -120,7 +125,16 @@ fun RegisterScreen() {
                     value = password,
                     onValueChange = { password = it },
                     label = { Text("Password") },
-                    modifier = Modifier.fillMaxWidth()
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        val image = if(passwordVisible) Icons.Filled.Visibility
+                        else Icons.Filled.VisibilityOff
+
+                        IconButton(onClick = { passwordVisible != passwordVisible }){
+                            Icon(imageVector = image, contentDescription = null)
+                        }
+                    }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
