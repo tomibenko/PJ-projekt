@@ -78,6 +78,8 @@ fun LoginScreen(){
                     val jsonResponse = JSONObject(responseData ?: "{}")
                     val userId = jsonResponse.optString("_id")
 
+                    val twoFactorRequired = jsonResponse.optBoolean("twoFactor", false)
+
                     if(userId.isNotEmpty()){
                         successMessage = "Login successful"
                         errorMessage = ""
@@ -188,5 +190,3 @@ fun LoginScreen(){
         }
     }
 }
-
-

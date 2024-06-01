@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Base64
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -25,6 +26,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import com.example.myapplication.ui.theme.MyApplicationTheme
+import com.google.firebase.messaging.FirebaseMessaging
 import com.google.zxing.integration.android.IntentIntegrator
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
@@ -54,6 +56,24 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        /*
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if(!task.isSuccessful){
+                Log.w("Main activity", "Fetching FCM registration token failed", task.exception)
+            }
+
+            val token = task.result
+
+            Log.d("MainActivity", token)
+            Toast.makeText(baseContext, token, Toast.LENGTH_LONG).show()
+
+            val sharedPreferences = getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
+            with(sharedPreferences.edit()){
+                putString("fcmToken", token)
+                apply()
+            }
+        }
+         */
     }
 }
 
