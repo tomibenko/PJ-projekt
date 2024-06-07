@@ -5,13 +5,9 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.media.RingtoneManager
-import android.os.Build
-import androidx.compose.material.icons.Icons
 import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
-import com.google.firebase.messaging.remoteMessage
-import androidx.compose.material.icons.filled.AccountCircle
 
 
 class MessagingService : FirebaseMessagingService() {
@@ -39,10 +35,8 @@ class MessagingService : FirebaseMessagingService() {
 
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
-            val channel = NotificationChannel(channelId, "ChannelTitle", NotificationManager.IMPORTANCE_DEFAULT)
-            notificationManager.createNotificationChannel(channel)
-        }
+        val channel = NotificationChannel(channelId, "ChannelTitle", NotificationManager.IMPORTANCE_DEFAULT)
+        notificationManager.createNotificationChannel(channel)
 
         notificationManager.notify(0, notificationBuilder.build())
     }
