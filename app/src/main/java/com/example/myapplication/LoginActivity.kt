@@ -1,21 +1,11 @@
 package com.example.myapplication
-import android.app.Activity.RESULT_OK
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.os.Bundle
-import android.os.PersistableBundle
-import android.provider.MediaStore
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.ui.platform.LocalContext
 import com.example.myapplication.ui.theme.MyApplicationTheme
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -26,32 +16,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import androidx.privacysandbox.tools.core.model.Method
-import com.android.volley.RequestQueue
-import com.android.volley.toolbox.StringRequest
-import com.android.volley.toolbox.Volley
-import kotlinx.coroutines.CoroutineStart
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import org.json.JSONObject
-import java.io.ByteArrayOutputStream
 import java.io.IOException
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
 
 class LoginActivity : ComponentActivity() {
-    private lateinit var requestQueue: RequestQueue
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        requestQueue = Volley.newRequestQueue(this)
 
         setContent {
             MyApplicationTheme {
@@ -69,15 +44,6 @@ fun LoginScreen() {
     var errorMessage by remember { mutableStateOf("") }
     var successMessage by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-
-    var capturedImage by remember { mutableStateOf<Bitmap?>(null) }
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == RESULT_OK) {
-            val photo = result.data?.extras?.get("data") as? Bitmap
-            capturedImage = photo
-            photo?.let { sendImageToServer(it) }
-        }
-    }
 
     fun loginUser(username: String, password: String){
         val client = OkHttpClient()
@@ -202,23 +168,12 @@ fun LoginScreen() {
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
-                    onClick = { openCamera(launcher) },
+                    onClick = { context.startActivity(Intent(context, CameraActivity::class.java)) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Login with face recognition")
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-
-                capturedImage?.let {
-                    Image(
-                        bitmap = it.asImageBitmap(),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
-                    )
-                }
-
                 Text(
                     text = "Don't have an account? Register",
                     color = MaterialTheme.colorScheme.primary,
@@ -229,17 +184,4 @@ fun LoginScreen() {
             }
         }
     }
-}
-@OptIn(ExperimentalEncodingApi::class)
-private fun sendImageToServer(bitmap: Bitmap) {
-    val url = "http://YOUR_FLASK_SERVER_URL/upload"
-
-    val byteArrayOutputStream = ByteArrayOutputStream()
-    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream)
-    val imageBytes = byteArrayOutputStream.toByteArray()
-}
-
-private fun openCamera(launcher: androidx.activity.result.ActivityResultLauncher<Intent>) {
-    val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-    launcher.launch(cameraIntent)
 }
