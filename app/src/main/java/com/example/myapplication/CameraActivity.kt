@@ -26,6 +26,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
+import com.example.myapplication.network.RetrofitClient
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import retrofit2.Call
 import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -102,6 +107,26 @@ class CameraActivity : ComponentActivity() {
             File(it, resources.getString(R.string.app_name)).apply { mkdirs() }
         }
         return if (mediaDir != null && mediaDir.exists()) mediaDir else filesDir
+    }
+
+    private fun uploadImageToServer(photoFile: File) {
+        val requestBody = RequestBody.create("image/*".toMediaTypeOrNull(), photoFile)
+        val body = MultipartBody.Part.createFormData("image", photoFile.name, requestBody)
+        val call = RetrofitClient.instance.uploadImage(body)
+
+        call.enqueue(object : retrofit2.Callback<Void> {
+            override fun onResponse(call: Call<Void>, response: retrofit2.Response<Void>) {
+                if (response.isSuccessful) {
+                    Log.d("Retrofit", "Image uploaded successfully")
+                } else {
+                    Log.e("Retrofit", "Image upload failed")
+                }
+            }
+
+            override fun onFailure(call: Call<Void>, t: Throwable) {
+                Log.e("Retrofit", "Image upload failed: ${t.message}")
+            }
+        })
     }
 
     override fun onDestroy() {
