@@ -9,7 +9,7 @@ import retrofit2.http.POST
 import retrofit2.http.Part
 
 object RetrofitClient {
-    private const val BASE_URL = "http://your-flask-server-url"
+    private const val BASE_URL = "http://localhost:5000"
 
     val instance: Api by lazy {
         val retrofit = Retrofit.Builder()

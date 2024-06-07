@@ -27,6 +27,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import com.example.myapplication.network.RetrofitClient
+import com.example.myapplication.ui.theme.MyApplicationTheme
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -44,7 +45,9 @@ class CameraActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            CameraScreen()
+            MyApplicationTheme {
+                CameraScreen()
+            }
         }
 
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -118,6 +121,7 @@ class CameraActivity : ComponentActivity() {
             override fun onResponse(call: Call<Void>, response: retrofit2.Response<Void>) {
                 if (response.isSuccessful) {
                     Log.d("Retrofit", "Image uploaded successfully")
+                    finish()
                 } else {
                     Log.e("Retrofit", "Image upload failed")
                 }
@@ -125,6 +129,7 @@ class CameraActivity : ComponentActivity() {
 
             override fun onFailure(call: Call<Void>, t: Throwable) {
                 Log.e("Retrofit", "Image upload failed: ${t.message}")
+                finish()
             }
         })
     }
