@@ -166,13 +166,6 @@ fun LoginScreen() {
                         modifier = Modifier.padding(top = 16.dp)
                     )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = { context.startActivity(Intent(context, CameraActivity::class.java)) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Login with face recognition")
-                }
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "Don't have an account? Register",

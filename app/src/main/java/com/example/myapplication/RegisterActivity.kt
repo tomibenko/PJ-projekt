@@ -47,7 +47,7 @@ fun RegisterScreen() {
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
     var successMessage by remember { mutableStateOf("") }
-    val passwordVisible by remember { mutableStateOf(false) }
+    var passwordVisible by remember { mutableStateOf(false) }
 
     fun registerUser(email: String, username: String, password: String){
         val client = OkHttpClient()
@@ -144,12 +144,6 @@ fun RegisterScreen() {
                     Text("Register")
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = { /*TODO implement logic face recognition*/ },
-                    modifier = Modifier.fillMaxWidth()
-                ){
-                    Text("Register with face recognition")
-                }
             }
         }
     }

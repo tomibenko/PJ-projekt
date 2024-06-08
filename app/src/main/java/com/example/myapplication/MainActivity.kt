@@ -153,6 +153,13 @@ fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
+                        onClick = { context.startActivity(Intent(context, CameraActivity::class.java)) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Scan your face for 2-factor authentication")
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
                         onClick = {
                             logout(context)
                         },
