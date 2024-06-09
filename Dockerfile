@@ -18,6 +18,8 @@ ENV PATH $ANDROID_HOME/build-tools/34.0.0:$PATH
 WORKDIR /app
 COPY . /app
 
+RUN chmod +x ./gradlew
+
 # Run gradle build
 RUN ./gradlew build
 

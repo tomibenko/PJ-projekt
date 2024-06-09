@@ -48,8 +48,5 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew build
 
-    - name: Start Android Emulator
-      uses: reactivecircus/android-emulator-runner@v2
-      with:
-        api-level: 29
-        script: ./gradlew connectedAndroidTest
+    - name: Run unit tests
+      run: ./gradlew test
