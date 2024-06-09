@@ -15,6 +15,7 @@ class MainViewModelTest {
         val viewModel = MainViewModel()
         assertEquals("", viewModel.scanResult.value)
     }
+
     @Test
     fun testTokenResultInit() {
         val viewModel = MainViewModel()
