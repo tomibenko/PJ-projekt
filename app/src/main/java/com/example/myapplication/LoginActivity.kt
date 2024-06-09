@@ -148,9 +148,18 @@ fun LoginScreen() {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = { loginUser(username, password) },
+                    shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth()
                 ){
                     Text("Login")
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { context.startActivity(Intent(context, FaceLoginActivity::class.java)) },
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Log in with Face ID")
                 }
                 if(errorMessage.isNotEmpty()){
                     Text(

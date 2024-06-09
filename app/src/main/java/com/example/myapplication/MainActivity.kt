@@ -3,14 +3,12 @@ package com.example.myapplication
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Bundle
 import android.util.Base64
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -28,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import com.example.myapplication.ui.theme.MyApplicationTheme
-import com.google.firebase.messaging.FirebaseMessaging
 import com.google.zxing.integration.android.IntentIntegrator
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
@@ -53,7 +50,7 @@ class MainViewModel : ViewModel() {
 
 class MainActivity : ComponentActivity() {
     private val mainViewModel: MainViewModel by viewModels()
-    private val REQUEST_VIDEO_CAPTURE = 1
+    private val requestVideoCapture = 1
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -75,13 +72,13 @@ class MainActivity : ComponentActivity() {
     fun dispatchTakeVideoIntent() {
         val takeVideoIntent = Intent(MediaStore.ACTION_VIDEO_CAPTURE)
         if(takeVideoIntent.resolveActivity(packageManager) != null){
-            startActivityForResult(takeVideoIntent, REQUEST_VIDEO_CAPTURE)
+            startActivityForResult(takeVideoIntent, requestVideoCapture)
         }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?){
         super.onActivityResult(requestCode, resultCode, data)
-        if(requestCode == REQUEST_VIDEO_CAPTURE && resultCode == RESULT_OK){
+        if(requestCode == requestVideoCapture && resultCode == RESULT_OK){
             val videoUri: Uri? = data?.data
             videoUri?.let {
                 uploadVideoToBackend(it)
@@ -135,13 +132,9 @@ class MainActivity : ComponentActivity() {
                             val responseBody = it.body?.string()
                             if (responseBody != null) {
                                 val jsonResponse = JSONObject(responseBody)
-                                val modelPath = jsonResponse.getString("model_path")
-                                val sharedPreferences = getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
-                                with(sharedPreferences.edit()) {
-                                    putString("model_path", modelPath)
-                                    apply()
-                                }
-                                println("Upload successful: $responseBody")
+                                val status = jsonResponse.getString("status")
+                                val message = jsonResponse.getString("message")
+                                println("Upload successful: $status, $message")
                             } else {
                                 println("Response body is null")
                             }
@@ -244,6 +237,7 @@ fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
                         onClick = { (context as MainActivity).dispatchTakeVideoIntent() },
+                        shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Scan your face")
