@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Bundle
@@ -24,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import com.google.firebase.messaging.FirebaseMessaging
@@ -36,6 +38,9 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
+import android.Manifest
+import android.provider.MediaStore
+import androidx.core.app.ActivityCompat
 
 class MainViewModel : ViewModel() {
     val scanResult: MutableState<String> = mutableStateOf("")
@@ -44,6 +49,7 @@ class MainViewModel : ViewModel() {
 
 class MainActivity : ComponentActivity() {
     private val mainViewModel: MainViewModel by viewModels()
+    private val REQUEST_VIDEO_CAPTURE = 1
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -56,24 +62,31 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        /*
-        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-            if(!task.isSuccessful){
-                Log.w("Main activity", "Fetching FCM registration token failed", task.exception)
-            }
 
-            val token = task.result
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), 0)
+        }
+    }
 
-            Log.d("MainActivity", token)
-            Toast.makeText(baseContext, token, Toast.LENGTH_LONG).show()
+    fun dispatchTakeVideoIntent() {
+        val takeVideoIntent = Intent(MediaStore.ACTION_VIDEO_CAPTURE)
+        if(takeVideoIntent.resolveActivity(packageManager) != null){
+            startActivityForResult(takeVideoIntent, REQUEST_VIDEO_CAPTURE)
+        }
+    }
 
-            val sharedPreferences = getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
-            with(sharedPreferences.edit()){
-                putString("fcmToken", token)
-                apply()
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?){
+        super.onActivityResult(requestCode, resultCode, data)
+        if(requestCode == REQUEST_VIDEO_CAPTURE && resultCode == RESULT_OK){
+            val videoUri: Uri? = data?.data
+            videoUri?.let {
+                uploadVideoToBackend(it)
             }
         }
-         */
+    }
+
+    private fun uploadVideoToBackend(videoUri: Uri){
+        /* TODO */
     }
 }
 
@@ -153,10 +166,10 @@ fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
-                        onClick = { context.startActivity(Intent(context, CameraActivity::class.java)) },
+                        onClick = { (context as MainActivity).dispatchTakeVideoIntent() },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Scan your face for 2-factor authentication")
+                        Text("Scan your face")
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
