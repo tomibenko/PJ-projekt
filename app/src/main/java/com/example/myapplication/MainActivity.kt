@@ -42,6 +42,9 @@ import android.Manifest
 import android.provider.MediaStore
 import androidx.core.app.ActivityCompat
 import okhttp3.RequestBody.Companion.asRequestBody
+import org.json.JSONException
+import java.io.FileNotFoundException
+import java.util.concurrent.TimeUnit
 
 class MainViewModel : ViewModel() {
     val scanResult: MutableState<String> = mutableStateOf("")
@@ -86,54 +89,83 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun uploadVideoToBackend(videoUri: Uri){
+    private fun uploadVideoToBackend(videoUri: Uri) {
         val contentResolver = contentResolver
         val file = File(cacheDir, "upload.mp4")
-        val inputStream = contentResolver.openInputStream(videoUri)
-        val outputStream = FileOutputStream(file)
-        inputStream?.copyTo(outputStream)
-        inputStream?.close()
-        outputStream?.close()
-
         val userId = getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE).getString("userId", null)
 
-        val client = OkHttpClient()
-        val mediaType = "video/mp4".toMediaType()
-        val requestBody = MultipartBody.Builder()
-            .setType(MultipartBody.FORM)
-            .addFormDataPart("video", file.name, file.asRequestBody(mediaType))
-            .addFormDataPart("user_id", userId ?: "")
-            .build()
+        try {
+            val inputStream = contentResolver.openInputStream(videoUri)
+            val outputStream = FileOutputStream(file)
 
-        val request = Request.Builder()
-            .url("http://localhost:5000/upload")
-            .post(requestBody)
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                e.printStackTrace()
+            inputStream?.use { input ->
+                outputStream.use { output ->
+                    input.copyTo(output)
+                }
             }
 
-            override fun onResponse(call: Call, response: Response) {
-                if(response.isSuccessful) {
-                    val responseBody = response.body?.string()
-                    val jsonResponse = JSONObject(responseBody)
-                    val modelPath = jsonResponse.getString("model_path")
-                    val sharedPreferences = getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
-                    with(sharedPreferences.edit()) {
-                        putString("model_path", modelPath)
-                        apply()
+            val client = OkHttpClient.Builder()
+                .connectTimeout(60, TimeUnit.SECONDS)
+                .writeTimeout(60, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
+                .retryOnConnectionFailure(true)  // Enable retry mechanism
+                .build()
+
+            val mediaType = "video/mp4".toMediaType()
+            val requestBody = MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("video", file.name, file.asRequestBody(mediaType))
+                .addFormDataPart("user_id", userId ?: "")
+                .build()
+
+            val request = Request.Builder()
+                .url("http://185.85.148.40:5000/upload")
+                .post(requestBody)
+                .build()
+
+            client.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    e.printStackTrace()
+                    println("Network failure: ${e.message}")
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    response.use {
+                        if (it.isSuccessful) {
+                            val responseBody = it.body?.string()
+                            if (responseBody != null) {
+                                val jsonResponse = JSONObject(responseBody)
+                                val modelPath = jsonResponse.getString("model_path")
+                                val sharedPreferences = getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
+                                with(sharedPreferences.edit()) {
+                                    putString("model_path", modelPath)
+                                    apply()
+                                }
+                                println("Upload successful: $responseBody")
+                            } else {
+                                println("Response body is null")
+                            }
+                        } else {
+                            println("Upload failed: ${it.message}")
+                        }
                     }
-                    println("Upload successful: $responseBody")
                 }
-                else{
-                    println("Upload failed: ${response.message}")
-                }
-            }
-        })
+            })
+        } catch (e: FileNotFoundException) {
+            e.printStackTrace()
+            println("File not found: ${e.message}")
+        } catch (e: IOException) {
+            e.printStackTrace()
+            println("IO exception: ${e.message}")
+        } catch (e: JSONException) {
+            e.printStackTrace()
+            println("JSON exception: ${e.message}")
+        } catch (e: Exception) {
+            e.printStackTrace()
+            println("Unexpected error: ${e.message}")
+        }
     }
-}
+
 
 @Composable
 fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
@@ -395,7 +427,7 @@ fun sendToDatabase(success: Boolean, scanResult: String?, userId: String?) {
         val client = OkHttpClient()
         val url = "http://185.85.148.40:8080/api/addUsageHistory"
         val json = JSONObject().apply {
-            put("id_pk", it) // Replace with actual id_pk
+            put("id_pk", scanResult) // Replace with actual id_pk
             put("userId", userId) // Replace with actual user ID
             put("success", success)
         }.toString()
@@ -465,4 +497,4 @@ fun GreetingPreview() {
     MyApplicationTheme {
         Greeting("Android")
     }
-}
+}}
