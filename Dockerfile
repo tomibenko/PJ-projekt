@@ -1,5 +1,5 @@
 # Official android sdk image
-FROM openjdk:11
+FROM openjdk:17
 
 # Install Android SDK tools
 RUN apt-get update && apt-get install -y wget unzip
