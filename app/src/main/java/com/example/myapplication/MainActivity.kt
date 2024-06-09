@@ -41,6 +41,7 @@ import java.util.zip.ZipInputStream
 import android.Manifest
 import android.provider.MediaStore
 import androidx.core.app.ActivityCompat
+import okhttp3.RequestBody.Companion.asRequestBody
 
 class MainViewModel : ViewModel() {
     val scanResult: MutableState<String> = mutableStateOf("")
@@ -86,7 +87,51 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun uploadVideoToBackend(videoUri: Uri){
-        /* TODO */
+        val contentResolver = contentResolver
+        val file = File(cacheDir, "upload.mp4")
+        val inputStream = contentResolver.openInputStream(videoUri)
+        val outputStream = FileOutputStream(file)
+        inputStream?.copyTo(outputStream)
+        inputStream?.close()
+        outputStream?.close()
+
+        val userId = getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE).getString("userId", null)
+
+        val client = OkHttpClient()
+        val mediaType = "video/mp4".toMediaType()
+        val requestBody = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("video", file.name, file.asRequestBody(mediaType))
+            .addFormDataPart("user_id", userId ?: "")
+            .build()
+
+        val request = Request.Builder()
+            .url("http://localhost:5000/upload")
+            .post(requestBody)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                e.printStackTrace()
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if(response.isSuccessful) {
+                    val responseBody = response.body?.string()
+                    val jsonResponse = JSONObject(responseBody)
+                    val modelPath = jsonResponse.getString("model_path")
+                    val sharedPreferences = getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
+                    with(sharedPreferences.edit()) {
+                        putString("model_path", modelPath)
+                        apply()
+                    }
+                    println("Upload successful: $responseBody")
+                }
+                else{
+                    println("Upload failed: ${response.message}")
+                }
+            }
+        })
     }
 }
 
