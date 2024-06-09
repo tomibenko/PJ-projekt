@@ -1,5 +1,5 @@
 # Official android sdk image
-FROM openjdk:17
+FROM openjdk:17-jdk-hotspot-bionic
 
 # Install Android SDK tools
 RUN apt-get update && apt-get install -y wget unzip
