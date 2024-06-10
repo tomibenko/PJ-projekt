@@ -1,8 +1,10 @@
-# Official android sdk image
-FROM openjdk:11
+# Use Ubuntu as the base image
+FROM ubuntu:20.04
+
+# Install prerequisites
+RUN apt-get update && apt-get install -y wget unzip openjdk-17-jdk
 
 # Install Android SDK tools
-RUN apt-get update && apt-get install -y wget unzip
 RUN wget -q https://dl.google.com/android/repository/commandlinetools-linux-7302050_latest.zip -O /sdk.zip
 RUN mkdir /sdk && unzip /sdk.zip -d /sdk
 RUN yes | /sdk/cmdline-tools/bin/sdkmanager --sdk_root=/sdk --licenses
@@ -13,11 +15,13 @@ ENV ANDROID_HOME /sdk
 ENV PATH $ANDROID_HOME/platform-tools:$PATH
 ENV PATH $ANDROID_HOME/cmdline-tools/tools/bin:$PATH
 ENV PATH $ANDROID_HOME/build-tools/34.0.0:$PATH
+ENV JAVA_HOME /usr/lib/jvm/java-17-openjdk-amd64
 
 # Copy project files
 WORKDIR /app
 COPY . /app
 
+# Ensure gradlew is executable
 RUN chmod +x ./gradlew
 
 # Run gradle build
