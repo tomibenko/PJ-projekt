@@ -130,7 +130,7 @@ class FaceLoginActivity : ComponentActivity() {
                 .build()
 
             val request = Request.Builder()
-                .url("http://185.85.148.40:5000/login")
+                .url("http://185.85.148.40:8089/login")
                 .post(requestBody)
                 .build()
 

@@ -116,7 +116,7 @@ class MainActivity : ComponentActivity() {
                 .build()
 
             val request = Request.Builder()
-                .url("http://185.85.148.40:5000/upload")
+                .url("http://185.85.148.40:8089/upload")
                 .post(requestBody)
                 .build()
 
