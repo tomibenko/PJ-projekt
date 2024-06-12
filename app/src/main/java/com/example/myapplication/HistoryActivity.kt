@@ -70,8 +70,13 @@ fun HistoryScreen() {
         if (historyItems.isEmpty()) {
             Text(
                 text = "Loading...",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
+                style = MaterialTheme.typography.titleLarge.copy(
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center
+                ),
+                modifier = Modifier
+                    .padding(bottom = 16.dp)
+                    .fillMaxWidth()
             )
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -113,7 +118,7 @@ private fun fetchHistory(context: Context, onResult: (List<HistoryItem>) -> Unit
     }
 
     val client = OkHttpClient()
-    val url = "http://185.85.148.40:8080/api/usageHistory"
+    val url = "http://185.85.148.40:8080/mailboxes/getUserHistory"
     val json = JSONObject().apply {
         put("userId", userId) // Replace with actual user ID
     }.toString()
