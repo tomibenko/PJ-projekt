@@ -51,7 +51,7 @@ fun RegisterScreen() {
 
     fun registerUser(email: String, username: String, password: String){
         val client = OkHttpClient()
-        val url = "http://185.85.148.40:8080/users"
+        val url = "http://92.63.28.41:3003/users"
 
         val json = JSONObject().apply {
             put("email", email)

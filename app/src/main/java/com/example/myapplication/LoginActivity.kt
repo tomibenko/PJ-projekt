@@ -47,7 +47,7 @@ fun LoginScreen() {
 
     fun loginUser(username: String, password: String){
         val client = OkHttpClient()
-        val url = "http://185.85.148.40:8080/users/login"
+        val url = "http://92.63.28.41:8080/users/login"
 
         val json = JSONObject().apply {
             put("username", username)

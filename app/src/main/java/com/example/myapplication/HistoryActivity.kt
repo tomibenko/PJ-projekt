@@ -118,7 +118,7 @@ private fun fetchHistory(context: Context, onResult: (List<HistoryItem>) -> Unit
     }
 
     val client = OkHttpClient()
-    val url = "http://185.85.148.40:8080/api/usageHistory"
+    val url = "http://92.63.28.41:8080/api/usageHistory"
     val json = JSONObject().apply {
         put("userId", userId) // Replace with actual user ID
     }.toString()
