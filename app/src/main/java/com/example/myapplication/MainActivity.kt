@@ -238,17 +238,7 @@ fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
                         onClick = {
-                            val intent = Intent(context, MapActivity::class.java)
-                            // Pass mock data for route points
-                            intent.putParcelableArrayListExtra(
-                                "ROUTE_POINTS",
-                                arrayListOf(
-                                    LatLng(46.0569, 14.5058), // Ljubljana
-                                    LatLng(46.5547, 15.6459), // Intermediate point near Ljubljana
-                                    LatLng(45.8150, 15.9819), // Example: Zagreb
-                                    LatLng(45.4408, 12.3155) // Venice
-                                )
-                            )
+                            val intent = Intent(context, TspSetupActivity::class.java)
                             context.startActivity(intent)
                         },
                         shape = MaterialTheme.shapes.medium,

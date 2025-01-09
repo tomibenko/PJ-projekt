@@ -30,6 +30,9 @@
         <activity
             android:name=".MapActivity"
             android:theme="@style/Theme.AppCompat"/>
+        <activity
+            android:name=".TspSetupActivity"
+            android:theme="@style/Theme.AppCompat"/>
         <activity android:name=".CameraActivity" />
         <activity android:name=".HistoryActivity" />
         <activity android:name=".LoginActivity" />

@@ -37,7 +37,8 @@ class MapActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         // a) Preberemo tri glavne točke iz Intenta
-        routePoints = intent.getParcelableArrayListExtra("ROUTE_POINTS") ?: emptyList()
+        routePoints= intent.getParcelableArrayListExtra("latLngList")!!
+        Log.d(TAG, "onCreate: ${routePoints}")
 
         // b) Znotraj coroutine, da ne blokiramo glavne niti
         lifecycleScope.launch {
@@ -64,7 +65,7 @@ class MapActivity : AppCompatActivity() {
                     // Pokličemo Routes API za to dvojico
                     val polylinedSegment = getRoutesApiRoute(
                         listOf(segmentStart, segmentEnd),
-                        apiKey = ""
+                        apiKey = "AIzaSyA5aFPU0b4GbgwwnfmQOtG0eZkmYJsG_XM"
                     )
                     allSegmentPolylines.add(polylinedSegment)
                 }
