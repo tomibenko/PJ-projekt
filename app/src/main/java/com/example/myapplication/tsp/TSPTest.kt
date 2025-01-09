@@ -12,13 +12,15 @@ object TSPTest {
 
         val maxFeValues = listOf(1000, 10_000, 100_000, 1_000_000)
 
-        val tspFilePath = "C:\\sola\\drugi_letnik\\drugi_semester\\PROJEKT\\prj\\app\\src\\main\\assets\\bays29.tsp"
+        val tspFilePath = "C:\\sola\\drugi_letnik\\drugi_semester\\PROJEKT\\prj\\app\\src\\main\\assets\\eil101.tsp"
 
         val tspFile = File(tspFilePath)
         if (!tspFile.exists()) {
             println("The .tsp file was not found at the specified path: $tspFilePath")
             return
         }
+
+        RandomUtils.setSeed(123L)
 
         for (maxFe in maxFeValues) {
             println("======================================")
@@ -53,6 +55,6 @@ object TSPTest {
             println("--------------------------------------\n")
         }
 
-        RandomUtils.setSeedFromTime()
+        //RandomUtils.setSeedFromTime()
     }
 }
