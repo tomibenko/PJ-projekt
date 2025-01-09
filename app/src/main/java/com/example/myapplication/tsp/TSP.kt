@@ -1,6 +1,5 @@
 package com.example.myapplication.tsp
 
-import org.json.JSONObject
 import java.io.File
 
 class TSP(path: String, var maxFe: Int) {
@@ -33,29 +32,8 @@ class TSP(path: String, var maxFe: Int) {
     var currentEval = 0
 
     init {
-        if (!path.contains("distance") && !path.contains("time")) {
-            loadExampleData(path)
-        } else {
-            name = path
-            loadDirect4MeData(path)
-            distanceType = DistanceType.WEIGHTED
-        }
+        loadData(path)
         currentEval = 0
-    }
-
-    fun getLocation(jsonString: String): Pair<Double, Double> {
-        val jsonObject = JSONObject(jsonString)
-
-        val res = jsonObject.getJSONArray("features")
-        val distance =
-            res.getJSONObject(0).getJSONObject("properties")["distance"].toString().toDouble()
-        val time = res.getJSONObject(0).getJSONObject("properties")["time"].toString().toDouble()
-
-        return Pair(distance, time)
-    }
-
-    fun loadDirect4MeData(path: String) {
-
     }
 
     fun evaluate(tour: Tour) {
@@ -96,7 +74,7 @@ class TSP(path: String, var maxFe: Int) {
         return tour
     }
 
-    private fun loadExampleData (path: String) {
+    private fun loadData (path: String) {
         val file = File(path)
         val lines = file.readLines()
         var values = lines[0].replace(" ", "").split(":")
