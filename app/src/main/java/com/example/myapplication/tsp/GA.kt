@@ -47,12 +47,15 @@ class GA (
                 problem.evaluate(mutateMember)
                 if(mutateMember.distance < best.distance) {
                     best = mutateMember.copy()
+
                 }
             }
 
             population = offspring.toMutableList()
             offspring.clear()
             genCount++
+            if(problem.currentEval%100000==0)
+            println(problem.currentEval)
         }
 
         return best

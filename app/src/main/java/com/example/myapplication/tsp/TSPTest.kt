@@ -10,9 +10,9 @@ object TSPTest {
         val crossoverChance = 0.8
         val mutationChance = 0.1
 
-        val maxFeValues = listOf(1000, 10_000, 100_000, 1_000_000)
+        val maxFeValues = listOf( 1_000_000)
 
-        val tspFilePath = "C:\\sola\\drugi_letnik\\drugi_semester\\PROJEKT\\prj\\app\\src\\main\\assets\\eil101.tsp"
+        val tspFilePath = "app/src/main/assets/pr1002.tsp"
 
         val tspFile = File(tspFilePath)
         if (!tspFile.exists()) {

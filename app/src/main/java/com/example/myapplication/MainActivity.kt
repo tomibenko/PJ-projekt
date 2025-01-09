@@ -243,8 +243,10 @@ fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                             intent.putParcelableArrayListExtra(
                                 "ROUTE_POINTS",
                                 arrayListOf(
-                                    LatLng(46.056946, 14.505751), // Example: Ljubljana
-                                    LatLng(45.815399, 15.966568)  // Example: Zagreb
+                                    LatLng(46.0569, 14.5058), // Ljubljana
+                                    LatLng(46.0511, 14.5058), // Intermediate point near Ljubljana
+                                    LatLng(46.0510, 14.5080), // Another intermediate point
+                                    LatLng(46.0515, 14.5100)   // Example: Zagreb
                                 )
                             )
                             context.startActivity(intent)

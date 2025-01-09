@@ -103,6 +103,7 @@ dependencies {
     implementation ("com.google.android.gms:play-services-location:21.0.1")
     // Za enostavne HTTP klice (OkHttp)
     implementation("com.squareup.okhttp3:okhttp:4.10.0")
-    // Za JSON deserializacijo (Gson, Moshi ali kaj podobnega)
     implementation("com.google.code.gson:gson:2.9.0")
+    // Za JSON deserializacijo (Gson, Moshi ali kaj podobnega)
+
 }
