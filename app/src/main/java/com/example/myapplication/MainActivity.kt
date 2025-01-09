@@ -246,7 +246,7 @@ fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                                     LatLng(46.0569, 14.5058), // Ljubljana
                                     LatLng(46.0511, 14.5058), // Intermediate point near Ljubljana
                                     LatLng(46.0510, 14.5080), // Another intermediate point
-                                    LatLng(46.0515, 14.5100)   // Example: Zagreb
+                                    LatLng(46.0515, 14.5100)  // Example: Zagreb
                                 )
                             )
                             context.startActivity(intent)

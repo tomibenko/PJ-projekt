@@ -16,7 +16,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.lifecycleScope
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
@@ -25,8 +24,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.google.gson.JsonParser
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class MapActivity : AppCompatActivity() {
 
@@ -38,6 +39,7 @@ class MapActivity : AppCompatActivity() {
 
         // 1) Read your locations from Intent
         routePoints = intent.getParcelableArrayListExtra("ROUTE_POINTS") ?: emptyList()
+        Log.d("MapActivity", "Vsebina routePoints: $routePoints")
 
         // 2) Use coroutine to avoid blocking UI with synchronous HTTP calls
         lifecycleScope.launch {
@@ -55,15 +57,15 @@ class MapActivity : AppCompatActivity() {
             val origin = routePoints.first()
             val destination = routePoints.last()
 
-            val apiKey = "AIzaSyBGqGnv3SNV4B5fhttwvbI2-vI4spDv_6c"
+            val apiKey = "AIzaSyA5aFPU0b4GbgwwnfmQOtG0eZkmYJsG_XM"
 
             try {
                 val routePointsRoad = withContext(Dispatchers.IO) {
-                    getDirectionsRoute(origin, destination, apiKey)
+                    getRoutesApiRoute(origin, destination, apiKey)
                 }
 
                 if (routePointsRoad.isEmpty()) {
-                    Log.e(TAG, "No route points returned from Directions API.")
+                    Log.e(TAG, "No route points returned from Routes API.")
                 } else {
                     Log.d(TAG, "Route points received: ${routePointsRoad.size} points.")
                 }
@@ -144,56 +146,68 @@ fun MapScreen(routePoints: List<LatLng>) {
     }
 }
 
-// Function to get directions route from Directions API
-fun getDirectionsRoute(
+// Function to get directions route from Routes API
+fun getRoutesApiRoute(
     origin: LatLng,
     destination: LatLng,
     apiKey: String
 ): List<LatLng> {
+    val requestBodyJson = """
+    {
+      "origin": {
+        "location": {
+          "latLng": {
+            "latitude": ${origin.latitude},
+            "longitude": ${origin.longitude}
+          }
+        }
+      },
+      "destination": {
+        "location": {
+          "latLng": {
+            "latitude": ${destination.latitude},
+            "longitude": ${destination.longitude}
+          }
+        }
+      },
+      "travelMode": "DRIVE"
+    }
+    """.trimIndent()
+
+    // -- 2) Sestavimo POST zahtevo
+    val mediaType = "application/json; charset=utf-8".toMediaType()
+    val body = requestBodyJson.toRequestBody(mediaType)
+
     val client = OkHttpClient()
 
-    val urlBuilder = StringBuilder("https://maps.googleapis.com/maps/api/directions/json?")
-    urlBuilder.append("origin=${origin.latitude},${origin.longitude}")
-    urlBuilder.append("&destination=${destination.latitude},${destination.longitude}")
-    urlBuilder.append("&key=$apiKey")
-
     val request = Request.Builder()
-        .url(urlBuilder.toString())
+        .url("https://routes.googleapis.com/directions/v2:computeRoutes")
+        .post(body)
+        // Dodamo API KEY v header (X-Goog-Api-Key) in poljubni field mask
+        .addHeader("X-Goog-Api-Key", apiKey)
+        .addHeader("X-Goog-FieldMask", "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline")
+        .addHeader("Content-Type", "application/json")
         .build()
 
+    // -- 3) Izvedemo sinhroni klic (pozor, v praksi raje v Dispatchers.IO/coroutines)
     val response = client.newCall(request).execute()
-    if (!response.isSuccessful) {
-        Log.e(TAG, "Directions API call failed with response code: ${response.code}")
-        return emptyList()
-    }
+    val responseBody = response.body?.string() ?: return emptyList()
+    Log.d(TAG, "getRoutesApiRoute: ")
 
-    val body = response.body?.string() ?: run {
-        Log.e(TAG, "Directions API response body is null.")
-        return emptyList()
-    }
+    val jsonObj = JsonParser.parseString(responseBody).asJsonObject
+    val routesArray = jsonObj.getAsJsonArray("routes") ?: return emptyList()
+    if (routesArray.size() == 0) return emptyList()
 
-    val jsonObj = JsonParser.parseString(body).asJsonObject
-    val status = jsonObj.get("status")?.asString
-    if (status != "OK") {
-        Log.e(TAG, "Directions API returned status: $status")
-        return emptyList()
-    }
+    val firstRoute = routesArray[0].asJsonObject
 
-    val routesArray = jsonObj.getAsJsonArray("routes")
-    if (routesArray.size() == 0) {
-        Log.e(TAG, "No routes found in Directions API response.")
-        return emptyList()
-    }
-
-    val routeObj = routesArray[0].asJsonObject
-    val overviewPolyline = routeObj
-        .getAsJsonObject("overview_polyline")
-        .get("points")
+    // Preberemo polje "polyline" -> "encodedPolyline"
+    val encodedPolyline = firstRoute
+        .getAsJsonObject("polyline")
+        .get("encodedPolyline")
         .asString
 
-    Log.d(TAG, "Encoded polyline: $overviewPolyline")
-
-    return decodePoly(overviewPolyline)
+    // -- 5) Dekodiramo polilinijo (encoded string -> List<LatLng>)
+    return decodePoly(encodedPolyline)
 }
 
 // Helper function to decode polyline
