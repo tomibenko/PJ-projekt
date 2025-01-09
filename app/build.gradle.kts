@@ -95,7 +95,14 @@ dependencies {
     implementation ("androidx.compose.ui:ui-tooling-preview:1.6.7")
     implementation ("com.squareup.retrofit2:retrofit:2.9.0")
     implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation ("androidx.appcompat:appcompat:1.6.1")
 
-
-
+    // Google Maps SDK za Android
+    implementation ("com.google.android.gms:play-services-maps:18.1.0")
+    // Play Services Location (za delo s pridobivanjem lokacije, če je potrebno)
+    implementation ("com.google.android.gms:play-services-location:21.0.1")
+    // Za enostavne HTTP klice (OkHttp)
+    implementation("com.squareup.okhttp3:okhttp:4.10.0")
+    // Za JSON deserializacijo (Gson, Moshi ali kaj podobnega)
+    implementation("com.google.code.gson:gson:2.9.0")
 }

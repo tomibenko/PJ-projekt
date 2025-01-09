@@ -38,6 +38,7 @@ import java.util.zip.ZipInputStream
 import android.Manifest
 import android.provider.MediaStore
 import androidx.core.app.ActivityCompat
+import com.google.android.gms.maps.model.LatLng
 import okhttp3.RequestBody.Companion.asRequestBody
 import org.json.JSONException
 import java.io.FileNotFoundException
@@ -233,6 +234,25 @@ fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(text = "View History")
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = {
+                            val intent = Intent(context, MapActivity::class.java)
+                            // Pass mock data for route points
+                            intent.putParcelableArrayListExtra(
+                                "ROUTE_POINTS",
+                                arrayListOf(
+                                    LatLng(46.056946, 14.505751), // Example: Ljubljana
+                                    LatLng(45.815399, 15.966568)  // Example: Zagreb
+                                )
+                            )
+                            context.startActivity(intent)
+                        },
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(text = "Open Map Activity")
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
