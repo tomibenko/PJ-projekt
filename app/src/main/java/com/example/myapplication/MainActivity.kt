@@ -244,9 +244,9 @@ fun MainContent(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                                 "ROUTE_POINTS",
                                 arrayListOf(
                                     LatLng(46.0569, 14.5058), // Ljubljana
-                                    LatLng(46.0511, 14.5058), // Intermediate point near Ljubljana
-                                    LatLng(46.0510, 14.5080), // Another intermediate point
-                                    LatLng(46.0515, 14.5100)  // Example: Zagreb
+                                    LatLng(46.5547, 15.6459), // Intermediate point near Ljubljana
+                                    LatLng(45.8150, 15.9819), // Example: Zagreb
+                                    LatLng(45.4408, 12.3155) // Venice
                                 )
                             )
                             context.startActivity(intent)

@@ -17,13 +17,13 @@ import androidx.lifecycle.lifecycleScope
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.google.gson.JsonParser
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -31,65 +31,66 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 class MapActivity : AppCompatActivity() {
 
-    // Your locations read from Intent
-    private var routePoints: List<LatLng> = listOf()
+    private var routePoints: List<LatLng> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 1) Read your locations from Intent
+        // a) Preberemo tri glavne točke iz Intenta
         routePoints = intent.getParcelableArrayListExtra("ROUTE_POINTS") ?: emptyList()
-        Log.d("MapActivity", "Vsebina routePoints: $routePoints")
 
-        // 2) Use coroutine to avoid blocking UI with synchronous HTTP calls
+        // b) Znotraj coroutine, da ne blokiramo glavne niti
         lifecycleScope.launch {
+            // Če ni dovolj točk, le prikažemo sporočilo
             if (routePoints.size < 2) {
-                // Not enough points
                 setContent {
                     MyApplicationTheme {
-                        Text("Not enough points for Directions API.")
+                        Text("Not enough points to draw routes.")
                     }
                 }
-                Log.e(TAG, "Not enough points provided to fetch directions.")
                 return@launch
             }
 
-            val origin = routePoints.first()
-            val destination = routePoints.last()
+            // c) Sestavimo seznam polilinij (vsaka polilinija = mini pot med dvema točkama)
+            val allSegmentPolylines = mutableListOf<List<LatLng>>()
 
-            val apiKey = "AIzaSyA5aFPU0b4GbgwwnfmQOtG0eZkmYJsG_XM"
+            withContext(Dispatchers.IO) {
+                // Primer: (Ljubljana->Maribor), (Maribor->Zagreb)
+                // Če imate več točk, se ustrezno ustvari več segmentov
+                for (i in 0 until routePoints.size - 1) {
+                    val segmentStart = routePoints[i]
+                    val segmentEnd = routePoints[i + 1]
 
-            try {
-                val routePointsRoad = withContext(Dispatchers.IO) {
-                    getRoutesApiRoute(origin, destination, apiKey)
+                    // Pokličemo Routes API za to dvojico
+                    val polylinedSegment = getRoutesApiRoute(
+                        listOf(segmentStart, segmentEnd),
+                        apiKey = ""
+                    )
+                    allSegmentPolylines.add(polylinedSegment)
                 }
+            }
 
-                if (routePointsRoad.isEmpty()) {
-                    Log.e(TAG, "No route points returned from Routes API.")
-                } else {
-                    Log.d(TAG, "Route points received: ${routePointsRoad.size} points.")
-                }
-
-                setContent {
-                    MyApplicationTheme {
-                        MapScreen(routePointsRoad)
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error fetching directions: ${e.message}")
-                setContent {
-                    MyApplicationTheme {
-                        Text("Error fetching directions: ${e.localizedMessage}")
-                    }
+            // d) Ko imamo vse polilinije, jih narišemo v MapScreen
+            setContent {
+                MyApplicationTheme {
+                    // V MapScreen pošljemo:
+                    // - routePoints: 3 glavne lokacije za markerje
+                    // - allSegmentPolylines: seznam “mini” polilinij
+                    MapScreen(
+                        mainPoints = routePoints,
+                        polylinesList = allSegmentPolylines
+                    )
                 }
             }
         }
-
     }
 }
 
 @Composable
-fun MapScreen(routePoints: List<LatLng>) {
+fun MapScreen(
+    mainPoints: List<LatLng>,
+    polylinesList: List<List<LatLng>>
+) {
     val context = LocalContext.current
     val fragmentContainerId = remember { View.generateViewId() }
 
@@ -112,32 +113,34 @@ fun MapScreen(routePoints: List<LatLng>) {
                 mapFragment.getMapAsync { googleMap ->
                     googleMap.uiSettings.isZoomControlsEnabled = true
 
-                    if (routePoints.isNotEmpty()) {
-                        // Draw Polyline with decoded road route
-                        val polylineOptions = PolylineOptions()
-                            .addAll(routePoints)
-                            .color(android.graphics.Color.BLUE) // or any color
-                            .width(8f)
+                    // (A) Narišemo vsako polilinijo
+                    polylinesList.forEach { segmentPoints ->
+                        if (segmentPoints.isNotEmpty()) {
+                            val polylineOptions = PolylineOptions()
+                                .addAll(segmentPoints)
+                                .color(android.graphics.Color.BLUE)
+                                .width(8f)
+                            googleMap.addPolyline(polylineOptions)
+                        }
+                    }
 
-                        googleMap.addPolyline(polylineOptions)
-
-                        // Start/End markers
+                    // (B) Dodamo markerje za glavne točke
+                    mainPoints.forEach { point ->
                         googleMap.addMarker(
                             MarkerOptions()
-                                .position(routePoints.first())
-                                .title("Start")
+                                .position(point)
+                                .icon(
+                                    BitmapDescriptorFactory.defaultMarker(
+                                        BitmapDescriptorFactory.HUE_RED
+                                    )
+                                )
                         )
-                        if (routePoints.size > 1) {
-                            googleMap.addMarker(
-                                MarkerOptions()
-                                    .position(routePoints.last())
-                                    .title("End")
-                            )
-                        }
+                    }
 
-                        // Move camera to the first point
+                    // (C) Premaknemo kamero recimo na prvo točko
+                    if (mainPoints.isNotEmpty()) {
                         googleMap.moveCamera(
-                            CameraUpdateFactory.newLatLngZoom(routePoints.first(), 12f)
+                            CameraUpdateFactory.newLatLngZoom(mainPoints.first(), 7f)
                         )
                     }
                 }
@@ -146,12 +149,29 @@ fun MapScreen(routePoints: List<LatLng>) {
     }
 }
 
-// Function to get directions route from Routes API
 fun getRoutesApiRoute(
-    origin: LatLng,
-    destination: LatLng,
+    allPoints: List<LatLng>,
     apiKey: String
 ): List<LatLng> {
+    if (allPoints.size < 2) return emptyList()
+    val origin = allPoints.first()
+    val destination = allPoints.last()
+    val intermediatePoints = allPoints.drop(1).dropLast(1)
+
+    // Sestavimo JSON
+    val intermediatesJson = intermediatePoints.joinToString(separator = ",") { point ->
+        """
+        {
+          "location": {
+            "latLng": {
+              "latitude": ${point.latitude},
+              "longitude": ${point.longitude}
+            }
+          }
+        }
+        """.trimIndent()
+    }
+
     val requestBodyJson = """
     {
       "origin": {
@@ -162,6 +182,7 @@ fun getRoutesApiRoute(
           }
         }
       },
+      ${if (intermediatesJson.isNotEmpty()) """"intermediates": [ $intermediatesJson ],""" else ""}
       "destination": {
         "location": {
           "latLng": {
@@ -174,43 +195,44 @@ fun getRoutesApiRoute(
     }
     """.trimIndent()
 
-    // -- 2) Sestavimo POST zahtevo
     val mediaType = "application/json; charset=utf-8".toMediaType()
     val body = requestBodyJson.toRequestBody(mediaType)
 
     val client = OkHttpClient()
-
+    // Dodamo key v URL namesto v header
     val request = Request.Builder()
-        .url("https://routes.googleapis.com/directions/v2:computeRoutes")
+        .url("https://routes.googleapis.com/directions/v2:computeRoutes?key=$apiKey")
         .post(body)
-        // Dodamo API KEY v header (X-Goog-Api-Key) in poljubni field mask
-        .addHeader("X-Goog-Api-Key", apiKey)
+        // .addHeader("X-Goog-Api-Key", apiKey) // to po potrebi zakomentiramo
         .addHeader("X-Goog-FieldMask", "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline")
         .addHeader("Content-Type", "application/json")
         .build()
 
-    // -- 3) Izvedemo sinhroni klic (pozor, v praksi raje v Dispatchers.IO/coroutines)
     val response = client.newCall(request).execute()
     val responseBody = response.body?.string() ?: return emptyList()
-    Log.d(TAG, "getRoutesApiRoute: ")
 
-    val jsonObj = JsonParser.parseString(responseBody).asJsonObject
+    Log.d(TAG, "HTTP status: ${response.code}")
+    Log.d(TAG, "Response body: $responseBody")
+
+    if (!response.isSuccessful) {
+        Log.e(TAG, "Request not successful!")
+        return emptyList()
+    }
+
+    val jsonObj = com.google.gson.JsonParser.parseString(responseBody).asJsonObject
     val routesArray = jsonObj.getAsJsonArray("routes") ?: return emptyList()
     if (routesArray.size() == 0) return emptyList()
 
     val firstRoute = routesArray[0].asJsonObject
-
-    // Preberemo polje "polyline" -> "encodedPolyline"
     val encodedPolyline = firstRoute
         .getAsJsonObject("polyline")
         .get("encodedPolyline")
         .asString
 
-    // -- 5) Dekodiramo polilinijo (encoded string -> List<LatLng>)
+    // Če želite, lahko namesto .toInt() uporabite .code
     return decodePoly(encodedPolyline)
 }
 
-// Helper function to decode polyline
 fun decodePoly(encoded: String): List<LatLng> {
     val poly = ArrayList<LatLng>()
     var index = 0
@@ -224,20 +246,22 @@ fun decodePoly(encoded: String): List<LatLng> {
             var shift = 0
             var result = 0
             do {
-                b = encoded[index++].toInt() - 63
+                b = encoded[index++].code - 63
                 result = result or ((b and 0x1f) shl shift)
                 shift += 5
             } while (b >= 0x20)
+
             val dlat = if ((result and 1) != 0) (result shr 1).inv() else (result shr 1)
             lat += dlat
 
             shift = 0
             result = 0
             do {
-                b = encoded[index++].toInt() - 63
+                b = encoded[index++].code - 63
                 result = result or ((b and 0x1f) shl shift)
                 shift += 5
             } while (b >= 0x20)
+
             val dlng = if ((result and 1) != 0) (result shr 1).inv() else (result shr 1)
             lng += dlng
 
@@ -252,5 +276,6 @@ fun decodePoly(encoded: String): List<LatLng> {
     Log.d(TAG, "Decoded polyline has ${poly.size} points.")
     return poly
 }
+
 
 
