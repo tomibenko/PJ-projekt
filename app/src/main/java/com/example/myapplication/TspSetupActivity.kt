@@ -105,17 +105,27 @@ class TspSetupActivity : AppCompatActivity() {
             selectedIndices.contains(city.index)
         }
 
+        // (A) Tu shranimo stare indekse, da bomo vedeli, kako izrezati vrstico/stolpec:
+        val oldIndexes = filteredCities.map { it.index }
+
+        // (B) Ponovno oštevilčimo mesta, da bo city.index šel od 1..newSize.
+        filteredCities.forEachIndexed { newIdx, city ->
+            city.index = newIdx + 1  // npr. 1.., 2.., 3..
+        }
+
         // 2) Zgradimo novo weights matriko, ki ustreza samo tem mestom
         val newSize = filteredCities.size
         val newWeights = MutableList(newSize) { DoubleArray(newSize) }
 
-        // V stari matriki so vrstice/stolpci od (city.index - 1)
-        // Nova vrstica/stolpec = i/j, kjer i/j je pozicija v filteredCities
-        for (i in filteredCities.indices) {
-            val cityI = filteredCities[i]
-            for (j in filteredCities.indices) {
-                val cityJ = filteredCities[j]
-                newWeights[i][j] = tsp.weights[cityI.index - 1][cityJ.index - 1]
+        // Tu uporabljamo 'oldIndexes' pri dostopu do STARE matrike,
+        // a i, j bosta v novem 0..(newSize - 1).
+        for (i in 0 until newSize) {
+            val oldIndexI = oldIndexes[i]  // stari index
+            for (j in 0 until newSize) {
+                val oldIndexJ = oldIndexes[j]
+                // pri dostopu do STARE tsp.weights upoštevamo stare indekse (minus 1),
+                // saj je originalna matrika indexirana z city.index - 1
+                newWeights[i][j] = tsp.weights[oldIndexI - 1][oldIndexJ - 1]
             }
         }
 
@@ -129,6 +139,7 @@ class TspSetupActivity : AppCompatActivity() {
             tsp.start = filteredCities[0].copy()
         }
     }
+
 
     private fun estimateTime(distance: Double): Double {
         // Poljubno
