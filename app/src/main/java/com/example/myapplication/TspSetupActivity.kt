@@ -26,9 +26,11 @@ import java.io.File
 class TspSetupActivity : AppCompatActivity() {
 
     private lateinit var allCities: List<CitySelectionItem>
+    private lateinit var outFile: File
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
 
         try {
             val tspInputStream = assets.open("direct4me_locations_distance.tsp")
@@ -54,10 +56,17 @@ class TspSetupActivity : AppCompatActivity() {
                                 }
 
                                 // 1) Ustvarimo TSP instanco iz .tsp datoteke
-                                val tspInputStream = assets.open("direct4me_locations_distance.tsp")
-                                val outFile = File(filesDir, "direct4me_locations_distance.tsp")
-                                tspInputStream.use { input -> outFile.outputStream().use { output -> input.copyTo(output) } }
+                                if(optimizeBy == "distance") {
+                                    val tspInputStream = assets.open("direct4me_locations_distance.tsp")
+                                    val outFile = File(filesDir, "direct4me_locations_distance.tsp")
+                                    tspInputStream.use { input -> outFile.outputStream().use { output -> input.copyTo(output) } }
+                                }
 
+                                else if(optimizeBy == "time") {
+                                    val tspInputStream = assets.open("direct4me_locations_time.tsp")
+                                    val outFile = File(filesDir, "direct4me_locations_time.tsp")
+                                    tspInputStream.use { input -> outFile.outputStream().use { output -> input.copyTo(output) } }
+                                }
                                 val tsp = TSP(outFile.absolutePath, maxFe = 200000)
 
                                 // 2) Filtriramo TSP tako, da ostanejo samo izbrane mest( a ).
