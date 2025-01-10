@@ -3,6 +3,7 @@ package com.example.myapplication
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.*
@@ -19,6 +20,7 @@ import com.example.myapplication.tsp.GA
 import com.example.myapplication.tsp.TSP
 import com.example.myapplication.tsp.Tour
 import com.google.android.gms.maps.model.LatLng
+import com.example.myapplication.utils.TSPUtils
 import java.io.File
 
 /**
@@ -26,19 +28,21 @@ import java.io.File
  */
 class TspSetupActivity : AppCompatActivity() {
 
-    // Primer vnaprej prebranega seznama mest z indexi in (lat, lng).
-    // Namesto ročnih vrednosti to lahko pridobite iz TSP datoteke
-    // ali iz vaše "bays29" definicije (npr. TSP.cities).
-    private val allCities = listOf(
-        CitySelectionItem(1, 1150.0, 1760.0, true),
-        CitySelectionItem(2, 630.0, 1660.0, true),
-        CitySelectionItem(3, 40.0, 2090.0, true),
-        // ... dodajte vse do 29 ...
-        CitySelectionItem(29, 360.0, 1980.0, true),
-    )
+    private lateinit var allCities: List<CitySelectionItem>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        try {
+            val tspInputStream = assets.open("direct4me_locations_distance.tsp")
+            allCities = TSPUtils.parseCitiesFromTspFile(tspInputStream)
+            Log.d("neke", "Successfully loaded ${allCities.size} cities.")
+        } catch (e: Exception) {
+            Log.e("neke", "Error loading cities: ${e.message}")
+            Toast.makeText(this, "Failed to load cities.", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
 
         setContent {
             MyApplicationTheme {
@@ -46,60 +50,78 @@ class TspSetupActivity : AppCompatActivity() {
                     TspSetupScreen(
                         initialCities = allCities,
                         onRunTsp = { selectedCities, gaParams, optimizeBy ->
-                            // Ko uporabnik klikne "Zaženi TSP"
+                            try{
+                                // Ko uporabnik klikne "Zaženi TSP"
 
-                            // 1) Zgradimo TSP primer (če imate branje iz datoteke, storite tam).
-                            //    Tu za primer kar ročno kreiramo TSP z bazo "bays29".
-                            //    Uporabite svojo pot ali branje distance matrike.
-                            val tspInputStream = assets.open("direct4me_locations_distance.tsp")
-                            val outFile = File(filesDir, "direct4me_locations_distance.tsp")
-
-                            tspInputStream.use { input ->
-                                outFile.outputStream().use { output ->
-                                    input.copyTo(output)
+                                // 1) Zgradimo TSP primer (če imate branje iz datoteke, storite tam).
+                                //    Tu za primer kar ročno kreiramo TSP z bazo "bays29".
+                                //    Uporabite svojo pot ali branje distance matrike.
+                                if(selectedCities.size < 2) {
+                                    Toast.makeText(this, "Please select at least two cities.", Toast.LENGTH_SHORT).show()
+                                    return@TspSetupScreen
                                 }
+
+                                val selectedIndices = selectedCities.map { it.index }
+
+                                val tspInputStream = assets.open("direct4me_locations_distance.tsp")
+                                val outFile = File(filesDir, "direct4me_locations_distance.tsp")
+
+                                tspInputStream.use { input ->
+                                    outFile.outputStream().use { output ->
+                                        input.copyTo(output)
+                                    }
+                                }
+
+                                val tsp = TSP(outFile.absolutePath, maxFe = 200000, selectedIndices) // poljubno
+
+                                // 2) Prilagodimo TSP, da upošteva le izbrane cities (če želite).
+                                //    Morda pa imate v TSP logiki že vgrajeno "vse mest" in
+                                //    ročno izločite nepotrebne. To je povsem odvisno od vaše implementacije.
+                                //    Za demonstracijo se pretvarjamo, da so "selectedCities" vsi, ki jih obdržimo.
+
+                                // 3) Ustvarimo GA in zaženemo.
+                                val ga = GA(
+                                    populationSize = gaParams.populationSize,
+                                    crossoverChance = gaParams.crossoverChance,
+                                    mutationChance = gaParams.mutationChance
+                                )
+
+                                val bestTour: Tour = ga.run(tsp)
+                                Log.d("neke", "Best tour distance: ${bestTour.distance}")
+
+                                // 4) Iz bestTour dobimo zaporedje indeksov.
+                                val routeIndexes = bestTour.path.map { it.index }
+
+                                // 5) Skupna "razdalja" je bestTour.distance,
+                                //    za "čas" bi morali imeti ustrezno matriko ali preračun v TSP.
+
+                                val totalDistance = bestTour.distance
+
+                                //val totalTime = estimateTime(bestTour.distance)
+                                // Ta metoda je izmišljena. Če imate matrične podatke,
+                                // lahko shranite tako "distance" kot "čas" v TSP evaluate().
+
+                                // 6) Prehod na MapActivity:
+                                //    -> mu pošljemo routeIndexes (zaporedje)
+                                //    -> in informacijo, ali naj prikaže razdaljo ali čas
+                                val coordinateList: List<LatLng> = createLatLngList(bestTour.path)
+                                Log.d("neke", "Coordinate list size: ${coordinateList.size}")
+
+                                val latLngArrayList: ArrayList<LatLng> = ArrayList(coordinateList)
+
+                                val intent = Intent(this, MapActivity::class.java).apply {
+                                    putExtra("latLngList", latLngArrayList)
+                                    //putExtra("TOTAL_TIME", totalTime)
+                                }
+                                Log.d("neke", "Starting MapActivity with coordinates: $coordinateList")
+                                Log.d("neke", "onCreate: ${coordinateList}")
+
+                                startActivity(intent)
                             }
-
-                            val tsp = TSP(outFile.absolutePath, maxFe = 200000) // poljubno
-
-                            // 2) Prilagodimo TSP, da upošteva le izbrane cities (če želite).
-                            //    Morda pa imate v TSP logiki že vgrajeno "vse mest" in
-                            //    ročno izločite nepotrebne. To je povsem odvisno od vaše implementacije.
-                            //    Za demonstracijo se pretvarjamo, da so "selectedCities" vsi, ki jih obdržimo.
-
-                            // 3) Ustvarimo GA in zaženemo.
-                            val ga = GA(
-                                populationSize = gaParams.populationSize,
-                                crossoverChance = gaParams.crossoverChance,
-                                mutationChance = gaParams.mutationChance
-                            )
-
-                            val bestTour: Tour = ga.run(tsp)
-
-                            // 4) Iz bestTour dobimo zaporedje indeksov.
-                            val routeIndexes = bestTour.path.map { it.index }
-
-                            // 5) Skupna "razdalja" je bestTour.distance,
-                            //    za "čas" bi morali imeti ustrezno matriko ali preračun v TSP.
-                            val totalDistance = bestTour.distance
-                            //val totalTime = estimateTime(bestTour.distance)
-                            // Ta metoda je izmišljena. Če imate matrične podatke,
-                            // lahko shranite tako "distance" kot "čas" v TSP evaluate().
-
-                            // 6) Prehod na MapActivity:
-                            //    -> mu pošljemo routeIndexes (zaporedje)
-                            //    -> in informacijo, ali naj prikaže razdaljo ali čas
-                            val coordinateList: List<LatLng> = createLatLngList(routeIndexes, tsp)
-                            val latLngArrayList: ArrayList<LatLng> = ArrayList(coordinateList)
-                            val intent = Intent(this, MapActivity::class.java).apply {
-                                putExtra("latLngList", latLngArrayList)
-                                //putExtra("TOTAL_TIME", totalTime)
+                            catch (e: Exception) {
+                                Log.e("neke", "Error running TSP: ${e.message}", e)
+                                Toast.makeText(this, "An error occurred while running TSP.", Toast.LENGTH_LONG).show()
                             }
-                            val TAG = "neke"
-                            Log.d(TAG, "onCreate: ${coordinateList}")
-
-
-                            startActivity(intent)
                         }
                     )
                 }
@@ -117,7 +139,7 @@ class TspSetupActivity : AppCompatActivity() {
     }
 }
 
-fun createLatLngList(routeIndexes: List<Int>, tsp: TSP): List<LatLng> {
+/*fun createLatLngList(routeIndexes: List<Int>, tsp: TSP): List<LatLng> {
     val latLngList = mutableListOf<LatLng>()
     for (cityIndex in routeIndexes) { // Adjust based on indexing
         if (cityIndex - 1 in tsp.cities.indices) {
@@ -128,6 +150,12 @@ fun createLatLngList(routeIndexes: List<Int>, tsp: TSP): List<LatLng> {
         }
     }
     return latLngList
+}*/
+
+fun createLatLngList(routePath: List<TSP.City>): List<LatLng> {
+    return routePath.map { city ->
+        LatLng(city.y, city.x)
+    }
 }
 
 
