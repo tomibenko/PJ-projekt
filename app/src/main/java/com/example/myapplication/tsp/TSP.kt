@@ -1,9 +1,8 @@
 package com.example.myapplication.tsp
 
-import android.util.Log
 import java.io.File
 
-class TSP(path: String, var maxFe: Int, selectedCityIndices: List<Int>? = null) {
+class TSP(path: String, var maxFe: Int) {
 
     enum class DistanceType { EUCLIDEAN, WEIGHTED }
 
@@ -22,15 +21,6 @@ class TSP(path: String, var maxFe: Int, selectedCityIndices: List<Int>? = null) 
             return City(index, x, y)
         }
 
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other !is City) return false
-            return index == other.index
-        }
-
-        override fun hashCode(): Int {
-            return index
-        }
     }
 
     lateinit var name: String
@@ -42,7 +32,7 @@ class TSP(path: String, var maxFe: Int, selectedCityIndices: List<Int>? = null) 
     var currentEval = 0
 
     init {
-        loadData(path, selectedCityIndices)
+        loadData(path)
         currentEval = 0
     }
 
@@ -84,134 +74,67 @@ class TSP(path: String, var maxFe: Int, selectedCityIndices: List<Int>? = null) 
         return tour
     }
 
-    private fun loadData (path: String, selectedCityIndices: List<Int>?) {
-        try {
-            val file = File(path)
-            val lines = file.readLines()
-            var values = lines[0].replace(" ", "").split(":")
-            name = values[1]
-            Log.d("neke", "TSP Name: $name")
+    private fun loadData (path: String) {
+        val file = File(path)
+        val lines = file.readLines()
+        var values = lines[0].replace(" ", "").split(":")
+        name = values[1]
+        var index = lines.indexOfFirst { it.contains("DIMENSION") }
+        values = lines[index].replace(" ", "").split(":")
+        number = values[1].toInt()
+        index = lines.indexOfFirst { it.contains("EDGE_WEIGHT_TYPE") }
+        values = lines[index].replace(" ", "").split(":")
 
-            var index = lines.indexOfFirst { it.contains("DIMENSION") }
-            values = lines[index].replace(" ", "").split(":")
-            number = values[1].toIntOrNull() ?: throw IllegalArgumentException("Invalid DIMENSION value.")
-            Log.d("neke", "Number of cities: $number")
-
-            index = lines.indexOfFirst { it.contains("EDGE_WEIGHT_TYPE") }
-            values = lines[index].replace(" ", "").split(":")
-            Log.d("neke", "EDGE_WEIGHT_TYPE: ${values[1]}")
-
-            if(values[1] == "EXPLICIT") {
-                index = lines.indexOfFirst { it.contains("EDGE_WEIGHT_SECTION") }
-                weights = readExplicit(lines, index + 1, selectedCityIndices)
-            }
-            else if (values[1] == "EUC_2D") {
-                index = lines.indexOfFirst { it.contains("NODE_COORD_SECTION") }
-                weights = readEuc2D(lines, index + 1, selectedCityIndices)
-            }
-
-            if (cities.isNotEmpty()) {
-                start = cities[0].copy()
-                Log.d("neke", "Start city: ${start.index} (${start.x}, ${start.y})")
-            } else {
-                Log.e("neke", "No cities loaded. Ensure that the data file contains city information.")
-                throw IllegalStateException("No cities loaded. Ensure that the data file contains city information.")
-            }
+        if(values[1] == "EXPLICIT") {
+            index = lines.indexOfFirst { it.contains("EDGE_WEIGHT_SECTION") }
+            weights = readExplicit(lines, index + 1)
         }
-        catch (e: Exception) {
-            Log.e("neke", "Exception during TSP loadData: ${e.message}", e)
-            throw e
+        else if (values[1] == "EUC_2D") {
+            index = lines.indexOfFirst { it.contains("NODE_COORD_SECTION") }
+            weights = readEuc2D(lines, index + 1)
+        }
+        if (cities.isNotEmpty()) {
+            start = cities[0].copy()
+        } else {
+            throw IllegalStateException("No cities loaded. Ensure that the data file contains city information.")
         }
     }
 
-    private fun readExplicit(lines: List<String>, index: Int, selectedCityIndices: List<Int>?): MutableList<DoubleArray> {
-        try {
-            val activeIndices = selectedCityIndices?.sorted() ?: (1..number).toList()
-            val filteredNumber = activeIndices.size
-            val connections = MutableList(filteredNumber) { DoubleArray(filteredNumber) }
-
-            for(i in 0 until filteredNumber) {
-                val lineIndex = index + activeIndices[i] - 1
-                if (lineIndex >= lines.size) {
-                    Log.e("neke", "Line index out of bounds: $lineIndex")
-                    throw IndexOutOfBoundsException("Line index out of bounds: $lineIndex")
-                }
-                val line = lines[lineIndex]
-                val values = line.split(" ").filterNot { it.isEmpty() }
-
-                if (values.size < filteredNumber) {
-                    Log.e("neke", "Insufficient weights in line: '$line'")
-                    throw NumberFormatException("Insufficient weights in line: '$line'")
-                }
-
-                for (j in 0 until filteredNumber) {
-                    val weightStr = values[activeIndices[j] - 1]
-                    val weight = weightStr.toDoubleOrNull()
-                    if(weight == null) {
-                        Log.e("neke", "Invalid weight value '$weightStr' in line: '$line'")
-                        throw NumberFormatException("Invalid weight value '$weightStr'")
-                    }
-                    connections[i][j] = weight
-                }
+    private fun readExplicit(lines: List<String>, index: Int): MutableList<DoubleArray> {
+        var connections = MutableList(number) { DoubleArray(number) }
+        for(i in 0 until number) {
+            val line = lines[index + i]
+            var values = line.split(" ")
+            values = values.filterNot { it.isEmpty() }
+            for (j in 0 until number) {
+                connections[i][j] = values[j].toDouble()
             }
-
-            val displaySectionIndex = lines.indexOfFirst { it.contains("DISPLAY_DATA_SECTION") }
-            if (displaySectionIndex == -1) {
-                Log.e("neke", "DISPLAY_DATA_SECTION not found in TSP file.")
-                throw IllegalArgumentException("DISPLAY_DATA_SECTION not found in the .tsp file.")
-            }
-
-            for (i in 0 until filteredNumber) {
-                val cityLineIndex = displaySectionIndex + 1 + activeIndices[i] - 1
-                if (cityLineIndex >= lines.size) {
-                    Log.e("neke", "City line index out of bounds: $cityLineIndex")
-                    throw IndexOutOfBoundsException("City line index out of bounds: $cityLineIndex")
-                }
-                val line = lines[cityLineIndex].trim()
-                val parts = line.split(Regex("\\s+"))
-                if (parts.size >= 3) {
-                    val cityIndex = parts[0].toIntOrNull()
-                    val lat = parts[1].toDoubleOrNull()
-                    val lng = parts[2].toDoubleOrNull()
-
-                    if(cityIndex == null || lat == null || lng == null) {
-                        Log.e("neke", "Invalid city data in line: '$line'")
-                        throw NumberFormatException("Invalid city data in line: '$line'")
-                    }
-
-                    cities.add(City(cityIndex, lat, lng))
-                    Log.d("neke", "Added city: $cityIndex ($lat, $lng)")
-                } else {
-                    Log.e("neke", "Invalid city line format: '$line'")
-                    throw NumberFormatException("Invalid city line format: '$line'")
-                }
-            }
-
-            distanceType = DistanceType.WEIGHTED
-            Log.d("neke", "Distance type set to WEIGHTED.")
-            return connections
         }
-        catch (e: Exception) {
-            Log.e("neke", "Exception in readExplicit: ${e.message}", e)
-            throw e
+
+        var index = lines.indexOfFirst { it.contains("DISPLAY_DATA_SECTION") }
+        index++
+        for (i in 0 until number) {
+            val line = lines[index + i]
+            var values = line.split(" ")
+            values = values.filterNot { it.isEmpty() }
+            cities.add(City(values[0].toInt(), values[1].toDouble(), values[2].toDouble()))
         }
+        distanceType = DistanceType.WEIGHTED
+        return connections
     }
-    private fun readEuc2D(lines: List<String>, index: Int, selectedCityIndices: List<Int>?): MutableList<DoubleArray> {
-        val activeIndices = selectedCityIndices?.sorted() ?: (1..number).toList()
-        val filteredNumber = activeIndices.size
-        for(i in 0 until filteredNumber) {
-            val line = lines[index + activeIndices[i] - 1]
-            val parts = line.split(" ")
-            if (parts.size >= 3) {
-                val city = City(parts[0].toInt(), parts[1].toDouble(), parts[2].toDouble())
-                cities.add(city)
-            }
+    private fun readEuc2D(lines: List<String>, index: Int): MutableList<DoubleArray> {
+        for(i in 0 until number) {
+            val line = lines[index + i]
+            var values = line.split(" ")
+            values = values.filterNot { it.isEmpty() }
+            val city = City(values[0].toInt(), values[1].toDouble(), values[2].toDouble())
+            cities.add(city)
         }
 
-        val connections = MutableList(filteredNumber) { DoubleArray(filteredNumber) }
-        for(i in 0 until filteredNumber) {
-            for(j in 0 until filteredNumber) {
-                connections[i][j] = calculateEuclideanDistance(cities[i], cities[j])
+        var connections = MutableList(number) { DoubleArray(number) }
+        for(i in 0 until number) {
+            for(j in 0 until number) {
+                connections[i][j] = calculateEuclideanDistance(cities[i], cities[j]).toDouble()
             }
         }
         distanceType = DistanceType.WEIGHTED

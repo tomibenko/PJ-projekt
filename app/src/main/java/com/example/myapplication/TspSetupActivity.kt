@@ -23,9 +23,6 @@ import com.google.android.gms.maps.model.LatLng
 import com.example.myapplication.utils.TSPUtils
 import java.io.File
 
-/**
- * Prikaz seznama mest, izbiranje parametrov GA, zagon TSP in prehod na MapActivity.
- */
 class TspSetupActivity : AppCompatActivity() {
 
     private lateinit var allCities: List<CitySelectionItem>
@@ -50,34 +47,22 @@ class TspSetupActivity : AppCompatActivity() {
                     TspSetupScreen(
                         initialCities = allCities,
                         onRunTsp = { selectedCities, gaParams, optimizeBy ->
-                            try{
-                                // Ko uporabnik klikne "Zaženi TSP"
-
-                                // 1) Zgradimo TSP primer (če imate branje iz datoteke, storite tam).
-                                //    Tu za primer kar ročno kreiramo TSP z bazo "bays29".
-                                //    Uporabite svojo pot ali branje distance matrike.
+                            try {
                                 if(selectedCities.size < 2) {
                                     Toast.makeText(this, "Please select at least two cities.", Toast.LENGTH_SHORT).show()
                                     return@TspSetupScreen
                                 }
 
-                                val selectedIndices = selectedCities.map { it.index }
-
+                                // 1) Ustvarimo TSP instanco iz .tsp datoteke
                                 val tspInputStream = assets.open("direct4me_locations_distance.tsp")
                                 val outFile = File(filesDir, "direct4me_locations_distance.tsp")
+                                tspInputStream.use { input -> outFile.outputStream().use { output -> input.copyTo(output) } }
 
-                                tspInputStream.use { input ->
-                                    outFile.outputStream().use { output ->
-                                        input.copyTo(output)
-                                    }
-                                }
+                                val tsp = TSP(outFile.absolutePath, maxFe = 200000)
 
-                                val tsp = TSP(outFile.absolutePath, maxFe = 200000, selectedIndices) // poljubno
-
-                                // 2) Prilagodimo TSP, da upošteva le izbrane cities (če želite).
-                                //    Morda pa imate v TSP logiki že vgrajeno "vse mest" in
-                                //    ročno izločite nepotrebne. To je povsem odvisno od vaše implementacije.
-                                //    Za demonstracijo se pretvarjamo, da so "selectedCities" vsi, ki jih obdržimo.
+                                // 2) Filtriramo TSP tako, da ostanejo samo izbrane mest( a ).
+                                val selectedIndices = selectedCities.map { it.index }
+                                filterTspBySelectedCities(tsp, selectedIndices)
 
                                 // 3) Ustvarimo GA in zaženemo.
                                 val ga = GA(
@@ -89,33 +74,15 @@ class TspSetupActivity : AppCompatActivity() {
                                 val bestTour: Tour = ga.run(tsp)
                                 Log.d("neke", "Best tour distance: ${bestTour.distance}")
 
-                                // 4) Iz bestTour dobimo zaporedje indeksov.
-                                val routeIndexes = bestTour.path.map { it.index }
-
-                                // 5) Skupna "razdalja" je bestTour.distance,
-                                //    za "čas" bi morali imeti ustrezno matriko ali preračun v TSP.
-
+                                // 4) Pripravimo zaporedje (indekse) in koordinate za MapActivity
                                 val totalDistance = bestTour.distance
-
-                                //val totalTime = estimateTime(bestTour.distance)
-                                // Ta metoda je izmišljena. Če imate matrične podatke,
-                                // lahko shranite tako "distance" kot "čas" v TSP evaluate().
-
-                                // 6) Prehod na MapActivity:
-                                //    -> mu pošljemo routeIndexes (zaporedje)
-                                //    -> in informacijo, ali naj prikaže razdaljo ali čas
                                 val coordinateList: List<LatLng> = createLatLngList(bestTour.path)
-                                Log.d("neke", "Coordinate list size: ${coordinateList.size}")
-
                                 val latLngArrayList: ArrayList<LatLng> = ArrayList(coordinateList)
 
                                 val intent = Intent(this, MapActivity::class.java).apply {
                                     putExtra("latLngList", latLngArrayList)
-                                    //putExtra("TOTAL_TIME", totalTime)
+                                    // Lahko bi dodali še totalDistance ali drug info
                                 }
-                                Log.d("neke", "Starting MapActivity with coordinates: $coordinateList")
-                                Log.d("neke", "onCreate: ${coordinateList}")
-
                                 startActivity(intent)
                             }
                             catch (e: Exception) {
@@ -130,37 +97,56 @@ class TspSetupActivity : AppCompatActivity() {
     }
 
     /**
-     * Primer navidezne metode za preračun časa na podlagi razdalje.
-     * V praksi bi bil to lahko kak "speed factor".
+     * Metoda, ki v danem TSP objektu ohrani le izbrane mest( a ) in ustrezno prireže matriko weights.
      */
+    private fun filterTspBySelectedCities(tsp: TSP, selectedIndices: List<Int>) {
+        // 1) Pridobimo le želene mest( a ) ...
+        val filteredCities = tsp.cities.filter { city ->
+            selectedIndices.contains(city.index)
+        }
+
+        // 2) Zgradimo novo weights matriko, ki ustreza samo tem mestom
+        val newSize = filteredCities.size
+        val newWeights = MutableList(newSize) { DoubleArray(newSize) }
+
+        // V stari matriki so vrstice/stolpci od (city.index - 1)
+        // Nova vrstica/stolpec = i/j, kjer i/j je pozicija v filteredCities
+        for (i in filteredCities.indices) {
+            val cityI = filteredCities[i]
+            for (j in filteredCities.indices) {
+                val cityJ = filteredCities[j]
+                newWeights[i][j] = tsp.weights[cityI.index - 1][cityJ.index - 1]
+            }
+        }
+
+        // 3) Naložimo nove vrednosti nazaj v TSP
+        tsp.cities = filteredCities.toMutableList()
+        tsp.weights = newWeights
+        tsp.number = newSize
+
+        // Posodobimo "start" na prvi city iz filtriranega seznama
+        if (filteredCities.isNotEmpty()) {
+            tsp.start = filteredCities[0].copy()
+        }
+    }
+
     private fun estimateTime(distance: Double): Double {
-        // Denimo: 1 enota distance ~ 1.2 minute
+        // Poljubno
         return distance * 1.2
     }
 }
 
-/*fun createLatLngList(routeIndexes: List<Int>, tsp: TSP): List<LatLng> {
-    val latLngList = mutableListOf<LatLng>()
-    for (cityIndex in routeIndexes) { // Adjust based on indexing
-        if (cityIndex - 1 in tsp.cities.indices) {
-            val city = tsp.cities[cityIndex - 1]
-            latLngList.add(LatLng(city.y, city.x))
-        } else {
-            Log.e("createLatLngList", "Invalid city index: $cityIndex")
-        }
-    }
-    return latLngList
-}*/
-
+/**
+ * Pomocna metoda, ki TSP.City pretvori v LatLng.
+ */
 fun createLatLngList(routePath: List<TSP.City>): List<LatLng> {
     return routePath.map { city ->
         LatLng(city.y, city.x)
     }
 }
 
-
 /**
- * Podatkovni razred za checkbox v LazyColumn.
+ * Dataclass za checkbox ...
  */
 data class CitySelectionItem(
     val index: Int,
@@ -170,7 +156,7 @@ data class CitySelectionItem(
 )
 
 /**
- * Parametri GA, ki jih nastavimo z vnosnimi polji.
+ * Parametri GA ...
  */
 data class GaParams(
     val populationSize: Int,
@@ -179,11 +165,7 @@ data class GaParams(
 )
 
 /**
- * UI, kjer prikažemo:
- *  - Seznam mest z checkboxi,
- *  - polja za GA parametre,
- *  - radio button za optimizacijo (čas / razdalja),
- *  - gumb za "Zaženi TSP".
+ * UI ...
  */
 @Composable
 fun TspSetupScreen(
@@ -196,27 +178,23 @@ fun TspSetupScreen(
 ) {
     val context = LocalContext.current
 
-    // Kopija seznama mest v Compose stanju
     var cities by remember { mutableStateOf(initialCities) }
 
-    // GA parametri v stanju
     var populationSize by remember { mutableStateOf("100") }
     var crossoverChance by remember { mutableStateOf("0.8") }
     var mutationChance by remember { mutableStateOf("0.1") }
 
-    // Radio button za optimizacijo
-    var optimizeBy by remember { mutableStateOf("distance") } // ali "time"
+    var optimizeBy by remember { mutableStateOf("distance") }
 
     Column(modifier = Modifier.padding(16.dp)) {
 
         Text(text = "Izberite mesta:", style = MaterialTheme.typography.titleMedium)
-
         Spacer(Modifier.height(8.dp))
 
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f) // da zapolni prostor
+                .weight(1f)
         ) {
             itemsIndexed(cities) { index, city ->
                 Row(
@@ -238,7 +216,6 @@ fun TspSetupScreen(
         }
 
         Spacer(Modifier.height(16.dp))
-
         Text(text = "Nastavitve GA:", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(8.dp))
 
@@ -248,14 +225,12 @@ fun TspSetupScreen(
             label = { Text("Velikost populacije") },
             modifier = Modifier.fillMaxWidth()
         )
-
         OutlinedTextField(
             value = crossoverChance,
             onValueChange = { crossoverChance = it },
             label = { Text("Verjetnost križanja") },
             modifier = Modifier.fillMaxWidth()
         )
-
         OutlinedTextField(
             value = mutationChance,
             onValueChange = { mutationChance = it },
@@ -264,7 +239,6 @@ fun TspSetupScreen(
         )
 
         Spacer(Modifier.height(16.dp))
-
         Text(text = "Optimiziraj:", style = MaterialTheme.typography.titleMedium)
         Row {
             RadioButton(
@@ -286,7 +260,6 @@ fun TspSetupScreen(
 
         Button(
             onClick = {
-                // Ob kliku gumb "Zaženi TSP"
                 val selectedCities = cities.filter { it.isSelected }
                 val gaParams = GaParams(
                     populationSize = populationSize.toIntOrNull() ?: 100,
@@ -301,5 +274,3 @@ fun TspSetupScreen(
         }
     }
 }
-
-
