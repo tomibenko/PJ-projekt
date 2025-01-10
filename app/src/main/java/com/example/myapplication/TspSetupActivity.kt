@@ -51,8 +51,8 @@ class TspSetupActivity : AppCompatActivity() {
                             // 1) Zgradimo TSP primer (če imate branje iz datoteke, storite tam).
                             //    Tu za primer kar ročno kreiramo TSP z bazo "bays29".
                             //    Uporabite svojo pot ali branje distance matrike.
-                            val tspInputStream = assets.open("bays29.tsp")
-                            val outFile = File(filesDir, "bays29.tsp")
+                            val tspInputStream = assets.open("direct4me_locations_distance.tsp")
+                            val outFile = File(filesDir, "direct4me_locations_distance.tsp")
 
                             tspInputStream.use { input ->
                                 outFile.outputStream().use { output ->
@@ -118,15 +118,18 @@ class TspSetupActivity : AppCompatActivity() {
 }
 
 fun createLatLngList(routeIndexes: List<Int>, tsp: TSP): List<LatLng> {
-    return routeIndexes.map { cityIndex ->
-        // POZOR: Če so vaši indeksi v TSP-ju 1-based, potem cityIndex-1,
-        // sicer directly cityIndex, odvisno od strukture vaših podatkov.
-        val city = tsp.cities[cityIndex - 1]
-
-        // Tu se odločite, ali je city.x longitude in city.y latitude, ali obratno:
-        LatLng(city.y, city.x)
+    val latLngList = mutableListOf<LatLng>()
+    for (cityIndex in routeIndexes) { // Adjust based on indexing
+        if (cityIndex - 1 in tsp.cities.indices) {
+            val city = tsp.cities[cityIndex - 1]
+            latLngList.add(LatLng(city.y, city.x))
+        } else {
+            Log.e("createLatLngList", "Invalid city index: $cityIndex")
+        }
     }
+    return latLngList
 }
+
 
 /**
  * Podatkovni razred za checkbox v LazyColumn.
