@@ -79,11 +79,9 @@ class TSP(path: String, var maxFe: Int) {
         val lines = file.readLines()
         var values = lines[0].replace(" ", "").split(":")
         name = values[1]
-
         var index = lines.indexOfFirst { it.contains("DIMENSION") }
         values = lines[index].replace(" ", "").split(":")
         number = values[1].toInt()
-
         index = lines.indexOfFirst { it.contains("EDGE_WEIGHT_TYPE") }
         values = lines[index].replace(" ", "").split(":")
 
@@ -95,7 +93,6 @@ class TSP(path: String, var maxFe: Int) {
             index = lines.indexOfFirst { it.contains("NODE_COORD_SECTION") }
             weights = readEuc2D(lines, index + 1)
         }
-
         if (cities.isNotEmpty()) {
             start = cities[0].copy()
         } else {
@@ -125,7 +122,6 @@ class TSP(path: String, var maxFe: Int) {
         distanceType = DistanceType.WEIGHTED
         return connections
     }
-
     private fun readEuc2D(lines: List<String>, index: Int): MutableList<DoubleArray> {
         for(i in 0 until number) {
             val line = lines[index + i]

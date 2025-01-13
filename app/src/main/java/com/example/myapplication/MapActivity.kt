@@ -57,7 +57,7 @@ class MapActivity : AppCompatActivity() {
 
             withContext(Dispatchers.IO) {
                 // Primer: (Ljubljana->Maribor), (Maribor->Zagreb)
-                // Če imate več točk, se ustrezno ustvari več segmentov
+                // Če imate več točk, se ustrezno ustvari več segmeentov
                 for (i in 0 until routePoints.size - 1) {
                     val segmentStart = routePoints[i]
                     val segmentEnd = routePoints[i + 1]
