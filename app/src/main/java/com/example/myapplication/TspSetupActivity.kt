@@ -55,7 +55,7 @@ class TspSetupActivity : AppCompatActivity() {
                                     return@TspSetupScreen
                                 }
 
-                                // 1) Ustvarimo TSP instanco iz .tsp datoteke
+
                                 if(optimizeBy == "distance") {
                                     val tspInputStream = assets.open("direct4me_locations_distance.tsp")
                                     val outFile = File(filesDir, "direct4me_locations_distance.tsp")
@@ -69,11 +69,10 @@ class TspSetupActivity : AppCompatActivity() {
                                 }
                                 val tsp = TSP(outFile.absolutePath, maxFe = 200000)
 
-                                // 2) Filtriramo TSP tako, da ostanejo samo izbrane mest( a ).
+
                                 val selectedIndices = selectedCities.map { it.index }
                                 filterTspBySelectedCities(tsp, selectedIndices)
 
-                                // 3) Ustvarimo GA in zaženemo.
                                 val ga = GA(
                                     populationSize = gaParams.populationSize,
                                     crossoverChance = gaParams.crossoverChance,
@@ -83,14 +82,12 @@ class TspSetupActivity : AppCompatActivity() {
                                 val bestTour: Tour = ga.run(tsp)
                                 Log.d("neke", "Best tour distance: ${bestTour.distance}")
 
-                                // 4) Pripravimo zaporedje (indekse) in koordinate za MapActivity
                                 val totalDistance = bestTour.distance
                                 val coordinateList: List<LatLng> = createLatLngList(bestTour.path)
                                 val latLngArrayList: ArrayList<LatLng> = ArrayList(coordinateList)
 
                                 val intent = Intent(this, MapActivity::class.java).apply {
                                     putExtra("latLngList", latLngArrayList)
-                                    // Lahko bi dodali še totalDistance ali drug info
                                 }
                                 startActivity(intent)
                             }
@@ -105,45 +102,33 @@ class TspSetupActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Metoda, ki v danem TSP objektu ohrani le izbrane mest( a ) in ustrezno prireže matriko weights.
-     */
     private fun filterTspBySelectedCities(tsp: TSP, selectedIndices: List<Int>) {
-        // 1) Pridobimo le želene mest( a ) ...
         val filteredCities = tsp.cities.filter { city ->
             selectedIndices.contains(city.index)
         }
 
-        // (A) Tu shranimo stare indekse, da bomo vedeli, kako izrezati vrstico/stolpec:
         val oldIndexes = filteredCities.map { it.index }
 
-        // (B) Ponovno oštevilčimo mesta, da bo city.index šel od 1..newSize.
         filteredCities.forEachIndexed { newIdx, city ->
-            city.index = newIdx + 1  // npr. 1.., 2.., 3..
+            city.index = newIdx + 1
         }
 
-        // 2) Zgradimo novo weights matriko, ki ustreza samo tem mestom
         val newSize = filteredCities.size
         val newWeights = MutableList(newSize) { DoubleArray(newSize) }
 
-        // Tu uporabljamo 'oldIndexes' pri dostopu do STARE matrike,
-        // a i, j bosta v novem 0..(newSize - 1).
+
         for (i in 0 until newSize) {
-            val oldIndexI = oldIndexes[i]  // stari index
+            val oldIndexI = oldIndexes[i]
             for (j in 0 until newSize) {
                 val oldIndexJ = oldIndexes[j]
-                // pri dostopu do STARE tsp.weights upoštevamo stare indekse (minus 1),
-                // saj je originalna matrika indexirana z city.index - 1
                 newWeights[i][j] = tsp.weights[oldIndexI - 1][oldIndexJ - 1]
             }
         }
 
-        // 3) Naložimo nove vrednosti nazaj v TSP
         tsp.cities = filteredCities.toMutableList()
         tsp.weights = newWeights
         tsp.number = newSize
 
-        // Posodobimo "start" na prvi city iz filtriranega seznama
         if (filteredCities.isNotEmpty()) {
             tsp.start = filteredCities[0].copy()
         }
@@ -151,23 +136,16 @@ class TspSetupActivity : AppCompatActivity() {
 
 
     private fun estimateTime(distance: Double): Double {
-        // Poljubno
         return distance * 1.2
     }
 }
 
-/**
- * Pomocna metoda, ki TSP.City pretvori v LatLng.
- */
 fun createLatLngList(routePath: List<TSP.City>): List<LatLng> {
     return routePath.map { city ->
         LatLng(city.y, city.x)
     }
 }
 
-/**
- * Dataclass za checkbox ...
- */
 data class CitySelectionItem(
     val index: Int,
     val lat: Double,
@@ -175,18 +153,13 @@ data class CitySelectionItem(
     var isSelected: Boolean
 )
 
-/**
- * Parametri GA ...
- */
+
 data class GaParams(
     val populationSize: Int,
     val crossoverChance: Double,
     val mutationChance: Double
 )
 
-/**
- * UI ...
- */
 @Composable
 fun TspSetupScreen(
     initialCities: List<CitySelectionItem>,

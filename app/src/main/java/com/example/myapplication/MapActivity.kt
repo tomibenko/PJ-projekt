@@ -36,13 +36,10 @@ class MapActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // a) Preberemo tri glavne točke iz Intenta
         routePoints= intent.getParcelableArrayListExtra("latLngList")!!
         Log.d(TAG, "onCreate: ${routePoints}")
 
-        // b) Znotraj coroutine, da ne blokiramo glavne niti
         lifecycleScope.launch {
-            // Če ni dovolj točk, le prikažemo sporočilo
             if (routePoints.size < 2) {
                 setContent {
                     MyApplicationTheme {
@@ -52,12 +49,11 @@ class MapActivity : AppCompatActivity() {
                 return@launch
             }
 
-            // c) Sestavimo seznam polilinij (vsaka polilinija = mini pot med dvema točkama)
             val allSegmentPolylines = mutableListOf<List<LatLng>>()
 
             withContext(Dispatchers.IO) {
                 // Primer: (Ljubljana->Maribor), (Maribor->Zagreb)
-                // Če imate več točk, se ustrezno ustvari več segmeentov
+                // Če imamo več točk, se ustrezno ustvari več segmeentov
                 for (i in 0 until routePoints.size - 1) {
                     val segmentStart = routePoints[i]
                     val segmentEnd = routePoints[i + 1]
@@ -71,12 +67,8 @@ class MapActivity : AppCompatActivity() {
                 }
             }
 
-            // d) Ko imamo vse polilinije, jih narišemo v MapScreen
             setContent {
                 MyApplicationTheme {
-                    // V MapScreen pošljemo:
-                    // - routePoints: 3 glavne lokacije za markerje
-                    // - allSegmentPolylines: seznam “mini” polilinij
                     MapScreen(
                         mainPoints = routePoints,
                         polylinesList = allSegmentPolylines
@@ -114,7 +106,6 @@ fun MapScreen(
                 mapFragment.getMapAsync { googleMap ->
                     googleMap.uiSettings.isZoomControlsEnabled = true
 
-                    // (A) Narišemo vsako polilinijo
                     polylinesList.forEach { segmentPoints ->
                         if (segmentPoints.isNotEmpty()) {
                             val polylineOptions = PolylineOptions()
@@ -125,7 +116,6 @@ fun MapScreen(
                         }
                     }
 
-                    // (B) Dodamo markerje za glavne točke
                     mainPoints.forEach { point ->
                         googleMap.addMarker(
                             MarkerOptions()
@@ -138,7 +128,6 @@ fun MapScreen(
                         )
                     }
 
-                    // (C) Premaknemo kamero recimo na prvo točko
                     if (mainPoints.isNotEmpty()) {
                         googleMap.moveCamera(
                             CameraUpdateFactory.newLatLngZoom(mainPoints.first(), 7f)
@@ -204,7 +193,6 @@ fun getRoutesApiRoute(
     val request = Request.Builder()
         .url("https://routes.googleapis.com/directions/v2:computeRoutes?key=$apiKey")
         .post(body)
-        // .addHeader("X-Goog-Api-Key", apiKey) // to po potrebi zakomentiramo
         .addHeader("X-Goog-FieldMask", "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline")
         .addHeader("Content-Type", "application/json")
         .build()
@@ -230,7 +218,6 @@ fun getRoutesApiRoute(
         .get("encodedPolyline")
         .asString
 
-    // Če želite, lahko namesto .toInt() uporabite .code
     return decodePoly(encodedPolyline)
 }
 
