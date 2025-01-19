@@ -34,6 +34,20 @@ import java.io.FileOutputStream
 import androidx.core.content.ContextCompat
 import androidx.core.app.ActivityCompat
 import android.content.pm.PackageManager
+import android.util.Log
+import com.chaquo.python.PyObject
+import com.chaquo.python.Python
+
+private fun compressFile(context: Context, inputFile: File, compressedFile: File) {
+    try {
+        val python = Python.getInstance()
+        val module: PyObject = python.getModule("image_compression")
+
+        module.callAttr("compress_color_file", inputFile.absolutePath, compressedFile.absolutePath)
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
 
 class FaceLoginActivity : ComponentActivity() {
     private val requestImageCapture = 1
@@ -110,7 +124,7 @@ class FaceLoginActivity : ComponentActivity() {
         })
     }
 
-    private fun uploadImage(userId: String, imageUri: Uri) {
+    /*private fun uploadImage(userId: String, imageUri: Uri) {
         val contentResolver = contentResolver
         val file = File(cacheDir, "upload.jpg")
         try {
@@ -160,7 +174,84 @@ class FaceLoginActivity : ComponentActivity() {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }*/
+    private fun uploadImage(userId: String, imageUri: Uri) {
+        val contentResolver = contentResolver
+
+        // 1) Copy the captured raw image to a local file (e.g. "raw_captured.jpg")
+        val originalFile = File(cacheDir, "raw_captured.jpg")
+        try {
+            Log.d("Compression", "raw image saving")
+            contentResolver.openInputStream(imageUri)?.use { input ->
+                FileOutputStream(originalFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            Log.d("Compression", "raw image saved")
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return
+        }
+
+        Log.d("Compression", "compressed image saving")
+
+        val compressedFile = File(cacheDir, "upload_compressed.bin")
+        compressFile(this, originalFile, compressedFile)
+
+        Log.d("Compression", "compressed image saved")
+
+
+        // 3) Now upload the *compressed* file
+
+        val client = OkHttpClient()
+        val mediaType = "application/octet-stream".toMediaType()  // It's not raw JPEG anymore
+        val requestBody = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("user_id", userId)
+            .addFormDataPart(
+                "image",
+                compressedFile.name,
+                compressedFile.asRequestBody(mediaType)
+            )
+            .build()
+
+        val request = Request.Builder()
+            .url("http://92.63.28.41:8089/login") // same endpoint, but now sending compressed
+            .post(requestBody)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                e.printStackTrace()
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                Log.d("Compression", "response")
+
+                if (response.isSuccessful) {
+                    val responseData = response.body?.string()
+                    val jsonResponse = JSONObject(responseData ?: "{}")
+                    val match = jsonResponse.optBoolean("match", false)
+
+                    runOnUiThread {
+                        if (match) {
+                            startActivity(Intent(this@FaceLoginActivity, MainActivity::class.java))
+                        } else {
+                            println("Face login failed: No match found")
+                        }
+                    }
+                    Log.d("Compression", "doing my best")
+
+                } else {
+                    println("Face login failed: ${response.message}")
+                }
+            }
+        })
+        Log.d("Compression", "uploaded")
+
     }
+
 
     @Composable
     fun FaceLoginScreen() {

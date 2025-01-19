@@ -1,7 +1,5 @@
-package com.example.myapplication
-
-import com.example.myapplication.tsp.TSPTest
+import java.io.File
 
 fun main() {
-    TSPTest.runTest()
+
 }

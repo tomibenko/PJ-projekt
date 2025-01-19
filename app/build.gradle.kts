@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     id("com.google.gms.google-services")
+    id("com.chaquo.python")
     alias(libs.plugins.google.android.libraries.mapsplatform.secrets.gradle.plugin)
 }
 
@@ -19,6 +20,10 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
+        }
+
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }
     }
 
@@ -52,6 +57,21 @@ android {
     }
 }
 
+chaquopy {
+    defaultConfig {
+        //buildPython("C:/Python312/python.exe")
+        //buildPython(""C:/Windows/py.exe"")
+
+        pip {
+            install("numpy")
+            install("pillow")
+            install("bitarray")
+        }
+    }
+    productFlavors { }
+    sourceSets { }
+}
+
 dependencies {
 
     implementation(libs.androidx.core.ktx)
@@ -67,7 +87,9 @@ dependencies {
     implementation(libs.play.services.maps)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.junit.ktx)
     testImplementation(libs.junit)
+    testImplementation("junit:junit:4.13.2")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -75,6 +97,9 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation("androidx.test:runner:1.5.2")
+    androidTestImplementation("androidx.test:rules:1.6.1")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     testImplementation("androidx.test:core:1.5.0")
